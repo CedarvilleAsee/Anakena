@@ -10,8 +10,10 @@ const int R_ARM_DOWN = 90;  //CHANGED
 // Dumper angles
 const int DUMP_DOWN = 83;
 const int DUMP_UP   = 125;
-const int DISPENSE_OUT   = 30;
-const int DISPENSE_BACK  = 5;
+const int RIGHT_DISPENSER_OUT_POSITION   = 1;
+const int RIGHT_DISPENSER_IN_POSITION  = 25;
+const int LEFT_DISPENSER_OUT_POSITION   = 20;
+const int LEFT_DISPENSER_IN_POSITION  = 2;
 
 // Kicker angles
 const int KICKER_READY = 15;

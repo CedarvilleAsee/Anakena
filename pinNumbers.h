@@ -48,10 +48,11 @@
 #define WHEEL_PWM_SECOND_STBY  33
 
 // Arm pins
-#define LEFT_ARM  13 //CHANGED
-#define RIGHT_ARM 12 //CHANGED
-#define DUMPER    11 //CHANGED
-#define DISPENSER 10 //CHANGED
+#define LEFT_ARM        13 //CHANGED
+#define RIGHT_ARM       12 //CHANGED
+#define DUMPER          11 //CHANGED
+#define RIGHT_DISPENSER 10 //CHANGED
+#define LEFT_DISPENSER  9
 
 // Sensors
 #define RIGHT_CLAW_SENSOR A0

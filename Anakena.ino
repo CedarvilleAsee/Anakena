@@ -10,13 +10,25 @@
 using namespace wheels;
 
 //Constants and Motors
-Servo leftArm, rightArm, dispenser, dumper;
+Servo leftArm, rightArm, rightDispenser, leftDispenser, dumper;
 
 void setup(){
 
   //set the pinmodes
   pinMode(LEDG, OUTPUT);
   pinMode(LEDY, OUTPUT);
+
+  //wheel initialization
+  pinMode(WHEEL_DIR_BR_B, OUTPUT);
+  pinMode(WHEEL_DIR_BR_F, OUTPUT);
+  pinMode(WHEEL_DIR_BL_B, OUTPUT);
+  pinMode(WHEEL_DIR_BL_F, OUTPUT);
+
+  digitalWrite(WHEEL_DIR_BR_B, LOW);
+  digitalWrite(WHEEL_DIR_BR_F, HIGH);
+  digitalWrite(WHEEL_DIR_BL_B, LOW);
+  digitalWrite(WHEEL_DIR_BL_F, HIGH);
+  
   //turn LED's on
   digitalWrite(LEDG, HIGH);
   digitalWrite(LEDY, HIGH);
@@ -26,25 +38,41 @@ void setup(){
   
   pinMode(LEFT_ARM, OUTPUT);
   pinMode(RIGHT_ARM, OUTPUT);
-  pinMode(DISPENSER, OUTPUT);
   pinMode(DUMPER, OUTPUT);
+  pinMode(RIGHT_DISPENSER, OUTPUT);
+  pinMode(LEFT_DISPENSER, OUTPUT);
 
   //attatch the motors
   leftArm.attach(LEFT_ARM);
   rightArm.attach(RIGHT_ARM);
-  dispenser.attach(DISPENSER);
+  rightDispenser.attach(RIGHT_DISPENSER);
+  leftDispenser.attach(LEFT_DISPENSER);
   dumper.attach(DUMPER);
+
+  //put all the servos in their place
+  leftArm.write(L_ARM_UP);
+  rightArm.write(R_ARM_UP);
+  dumper.write(DUMP_DOWN);
+  rightDispenser.write(RIGHT_DISPENSER_IN_POSITION);
+  leftDispenser.write(LEFT_DISPENSER_IN_POSITION);
 }
 
-void loop() {
+bool hasRun = false;
 
-  lowerDump();
-  leftCollect();
-  delay(1000);
-  rightCollect();
-  delay(1000);
-  dump();
-  delay(1000);
+void loop() {
+  if(!hasRun){
+    //lowerDump();
+    leftCollect();
+    delay(1000);
+    rightCollect();
+    delay(1000);
+    dump();
+    delay(1000);
+    rightDispense();
+    delay(1000);
+    leftDispense();
+    delay(1000);
+  }
 }
 
 void leftCollect(){
@@ -61,10 +89,20 @@ void dump(){
   dumper.write(DUMP_UP);
   delay(200);
   dumper.write(DUMP_DOWN);
-  delay(200);
-  dumper.write(DUMP_UP);
+  //delay(200);
+  //dumper.write(DUMP_UP);
 }
 void lowerDump(){
   dumper.write(DUMP_DOWN);
+}
+void rightDispense(){
+  rightDispenser.write(RIGHT_DISPENSER_OUT_POSITION);
+  delay(700);
+  rightDispenser.write(RIGHT_DISPENSER_IN_POSITION);
+}
+void leftDispense(){
+  leftDispenser.write(LEFT_DISPENSER_OUT_POSITION);
+  delay(700);
+  leftDispenser.write(LEFT_DISPENSER_IN_POSITION);
 }
 
