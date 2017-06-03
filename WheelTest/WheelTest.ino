@@ -42,7 +42,7 @@ void setup() {
   digitalWrite(WHEEL_DIR_RF, HIGH);
   digitalWrite(WHEEL_DIR_RB, LOW);
 
-  // Standby pins
+  // Standby
   pinMode(WHEEL_PWM_STBY, OUTPUT);
   digitalWrite(WHEEL_PWM_STBY, HIGH);
 

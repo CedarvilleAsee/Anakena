@@ -1,36 +1,30 @@
 #pragma once
 
+// LEDs
 const int LEDY = 38;
 const int LEDG = 40;
 
 // Line Sensors
-char LINE_SENSOR(int i) {
-  static const char pins[] = {51,49,47,45,43,41,39,37};
-  return pins[i];
-}
+int LINE_SENSOR[] = {39, 41, 43, 45, 47, 49, 51, 53};
 
 // Buttons
 const int BUTTON1 = 30;
 const int BUTTON2 = 32;
 
-// Arm Pins
-const int LEFT_ARM = 13;
-const int RIGHT_ARM = 12;
+// Servos
+const int L_SCOOP = 13;
+const int R_SCOOP = 12;
 const int DUMPER = 11;
-const int RIGHT_DISPENSER = 10;
-const int LEFT_DISPENSER = 9;
+const int R_DISPENSER = 10;
+const int L_DISPENSER = 9;
 
-//Wheels
-const int WHEEL_DIR_L_B  =   26;
-const int WHEEL_DIR_L_F  =   28;
-const int WHEEL_DIR_R_B  =   34;
-const int WHEEL_DIR_R_F  =   36;
+// Wheels
+const int WHEEL_DIR_LB = 26;
+const int WHEEL_DIR_LF = 28;
+const int WHEEL_DIR_RB = 34;
+const int WHEEL_DIR_RF = 36;
 
-// Speed Pins
-const int WHEEL_PWM_L   =   7;
-const int WHEEL_PWM_R   =   8;
+const int WHEEL_SPEED_L = 7;
+const int WHEEL_SPEED_R = 8;
 
-// Standby Pins
-const int WHEEL_PWM_FIRST_STBY   = 31;
-const int WHEEL_PWM_SECOND_STBY  = 33;
-
+const int WHEEL_STBY = 33;

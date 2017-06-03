@@ -1,20 +1,21 @@
 #pragma once
 
-// Arm servo angles.
-const int L_ARM_UP   = 160; //CHANGED
-const int L_ARM_DOWN = 80;  //CHANGED
-const int R_ARM_UP   = 20;  //CHANGED
-const int R_ARM_DOWN = 90;  //CHANGED
+// Scoop angles
+const int L_SCOOP_UP   = 160;
+const int L_SCOOP_DOWN = 80;
+const int R_SCOOP_UP   = 20;
+const int R_SCOOP_DOWN = 90;
 
 // Dumper angles
 const int DUMP_DOWN = 83;
 const int DUMP_UP   = 125;
-const int RIGHT_DISPENSER_OUT_POSITION = 1;  //CHANGED
-const int RIGHT_DISPENSER_IN_POSITION = 25; //CHANGED
-const int LEFT_DISPENSER_OUT_POSITION = 20; //CHANGED
-const int LEFT_DISPENSER_IN_POSITION = 2;  //CHANGED
 
-enum State {
-    START = 0,
-    LINE_FOLLOW = 1
-};
+// Dispenser angles
+const int R_DISPENSER_OUT = 1;
+const int R_DISPENSER_IN = 25;
+const int L_DISPENSER_OUT = 20;
+const int L_DISPENSER_IN = 2;
+
+// Speeds for line following
+int OFFSET_SPEED[] = { 100, 95, 90, 85, 80, 75, 70, 65, 60, 55 };
+
