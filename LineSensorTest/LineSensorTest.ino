@@ -1,5 +1,5 @@
-int pins[] = {37, 39, 41, 43, 45, 47, 49, 51, 50, 48, 46, 44, 42};
-int numPins = 13;
+int pins[] = {39, 41, 43, 45, 47, 49, 51, 53};
+int numPins = 8;
 
 void setup() {
   // put your setup code here, to run once:
@@ -11,7 +11,6 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
   
   for (int i = 0; i < numPins; i++) {
     Serial.print("Pin ");
