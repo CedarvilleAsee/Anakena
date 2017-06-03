@@ -1,63 +1,41 @@
-#ifndef PIN_NUM
+#pragma once
 
-#define PIN_NUM
+const int DRIVE_WHEEL_L = 34;
+const int DRIVE_WHEEL_R = 36;
 
-#define DRIVE_WHEEL_L     34
-#define DRIVE_WHEEL_R     36 
+const int LEDY = 38;
+const int LEDG = 40;
 
-#define LEDY              38
-#define LEDG              40
-   
-#define WHEEL_DIR_FL_B     35
-#define WHEEL_DIR_FL_F     37
+// Line Sensors
+const int LINE_SENSOR_1 = 39;
+const int LINE_SENSOR_2 = 41;
+const int LINE_SENSOR_3 = 43;
+const int LINE_SENSOR_4 = 45;
+const int LINE_SENSOR_5 = 47;
+const int LINE_SENSOR_6 = 49;
+const int LINE_SENSOR_7 = 51;
 
-// pins of line sensors
-#define LINE_SENSOR_0 39
-#define LINE_SENSOR_1     41
-#define LINE_SENSOR_2     43
-#define LINE_SENSOR_3     45  
-#define LINE_SENSOR_4     47
-#define LINE_SENSOR_5     49
-#define LINE_SENSOR_6     51
-#define LINE_SENSOR_7     520
-
-//start button?
-#define BUTTON1           30
-#define BUTTON2           32
+// Buttons
+const int BUTTON1 = 30;
+const int BUTTON2 = 32;
 
 //Motor Controller Pins
-#define WHEEL_DIR_FR_B     34
-#define WHEEL_DIR_FR_F     36
-#define WHEEL_DIR_FL_B     35
-#define WHEEL_DIR_FL_F     37
-#define WHEEL_DIR_BR_B     26
-#define WHEEL_DIR_BR_F     28
-#define WHEEL_DIR_BL_B     27
-#define WHEEL_DIR_BL_F     29
+const int WHEEL_DIR_LB = 26;
+const int WHEEL_DIR_LF = 28;
+const int WHEEL_DIR_RB = 27;
+const int WHEEL_DIR_RF = 29;
 
 // Speed Pins
-#define WHEEL_PWM_FR      8
-#define WHEEL_PWM_FL      2
-#define WHEEL_PWM_BR      7
-#define WHEEL_PWM_BL      3
+const int WHEEL_PWM_R = 8;
+const int WHEEL_PWM_L = 2;
 
 // Standby Pins
-// It doesn't matter which standbys control which wheels because all the 
-// wheels we be doing the same thing all the time (this is the one robot team).
-#define WHEEL_PWM_FIRST_STBY  31
-#define WHEEL_PWM_SECOND_STBY  33
+const int WHEEL_PWM_FIRST_STBY = 31;
+const int WHEEL_PWM_SECOND_STBY = 33;
 
-// Arm pins
-#define LEFT_ARM        13 //CHANGED
-#define RIGHT_ARM       12 //CHANGED
-#define DUMPER          11 //CHANGED
-#define RIGHT_DISPENSER 10 //CHANGED
-#define LEFT_DISPENSER  9
-
-// Sensors
-#define RIGHT_CLAW_SENSOR A0
-#define LEFT_CLAW_SENSOR A1
-#define FRONT_SENSOR A2
-#define BACK_SENSOR A3
-
-#endif 
+// Arm Pins
+const int LEFT_ARM = 13;
+const int RIGHT_ARM = 12;
+const int DUMPER = 11;
+const int RIGHT_DISPENSER = 10;
+const int LEFT_DISPENSER = 9;
