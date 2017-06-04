@@ -6,6 +6,32 @@
 // Servos
 Servo leftScoop, rightScoop, rightDispenser, leftDispenser, dumper;
 
+void leftDrive(int speed) {
+  if (speed >= 0) {
+    digitalWrite(WHEEL_DIR_LF, HIGH);
+    digitalWrite(WHEEL_DIR_LB, LOW);
+    analogWrite(WHEEL_SPEED_L, speed);
+  }
+  else {
+    digitalWrite(WHEEL_DIR_LF, LOW);
+    digitalWrite(WHEEL_DIR_LB, HIGH);
+    analogWrite(WHEEL_SPEED_L, -speed);    
+  }
+}
+
+void rightDrive(int speed) {
+  if (speed >= 0) {
+    digitalWrite(WHEEL_DIR_RF, HIGH);
+    digitalWrite(WHEEL_DIR_RB, LOW);
+    analogWrite(WHEEL_SPEED_R, speed);
+  }
+  else {
+    digitalWrite(WHEEL_DIR_RF, LOW);
+    digitalWrite(WHEEL_DIR_RB, HIGH);
+    analogWrite(WHEEL_SPEED_R, -speed);    
+  }
+}
+
 bool leftCollect(){
   static int startTime = -1;
   if(startTime == -1){
@@ -76,7 +102,7 @@ bool leftDispense(){
   return false;
 }
 
-bool delay(int amount) {
+bool delayState(int amount) {
   static int startTime = -1;
   if (startTime == -1) {
     startTime = millis();
@@ -86,18 +112,6 @@ bool delay(int amount) {
     return true;
   }
   return false;
-}
-
-void leftDrive(int speed) {
-  digitalWrite(WHEEL_DIR_LF, HIGH);
-  digitalWrite(WHEEL_DIR_LB, LOW);
-  analogWrite(WHEEL_SPEED_L, speed);
-}
-
-void rightDrive(int speed) {
-  digitalWrite(WHEEL_DIR_RF, HIGH);
-  digitalWrite(WHEEL_DIR_RB, LOW);
-  analogWrite(WHEEL_SPEED_R, speed);
 }
 
 void resetRobot() {  
@@ -159,6 +173,52 @@ bool lineFollow() {
   return false;
 }
 
+bool initialTurn() {
+  static int startTime = -1;
+  leftDrive(175);
+  rightDrive(160);
+  if (startTime == -1) {
+    startTime = millis();
+  }
+  else if (millis() - startTime > 900) {
+    startTime = -1;
+    return true;
+  }
+  return false;
+}
+
+bool wallFind() {
+  leftDrive(150);
+  rightDrive(150);
+  if (analogRead(A0) < 750) {
+    return true;
+  }
+  return false;
+}
+
+bool wallFollow() {
+  int wallSensor = analogRead(A0);
+  int offset = (wallSensor - 700) / 4;
+  Serial.println(offset);
+  if (wallSensor < 80) {
+    leftDrive(-70);
+    rightDrive(-40);
+  }
+  else if (offset > 0) {
+    leftDrive(130);
+    rightDrive(130 - min(offset, 70));
+  }
+  else if (offset < 0) {
+    leftDrive(130 + max(offset, -70));
+    rightDrive(130);
+  }
+  else {
+    leftDrive(130);
+    rightDrive(130);    
+  }
+  return false;
+}
+
 void setup(){
 
   // LEDs
@@ -173,6 +233,8 @@ void setup(){
   for (int i = 0; i < 8; i++) {
     pinMode(LINE_SENSOR[i], INPUT);
   }
+
+  //
 
   // Servos
   pinMode(L_SCOOP, OUTPUT);
@@ -220,13 +282,18 @@ void setup(){
 
 void loop() {
   static int state = 0;
+  Serial.println(analogRead(A0));
   if (button2()) state = 0;
   switch (state) {
     case 0: if (start()) state++; 
     break;
-    case 1: if (lineFollow()) state++;
+    case 1: if (initialTurn()) state++;
     break;
-    case 2: state = 0;
+    case 2: if (wallFind()) state++;
+    break;
+    case 3: if (wallFollow()) state++;
+    break;
+    case 4: state = 0;
     break;
   }
 }

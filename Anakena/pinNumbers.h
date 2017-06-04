@@ -4,8 +4,11 @@
 const int LEDY = 38;
 const int LEDG = 40;
 
-// Line Sensors
+// Line sensors
 int LINE_SENSOR[] = {39, 41, 43, 45, 47, 49, 51, 53};
+
+// Wall sensors
+const int R_WALL_SENSOR = A0;
 
 // Buttons
 const int BUTTON1 = 30;
