@@ -6,15 +6,16 @@
 Servo leftScoop, rightScoop, rightDispenser, leftDispenser, dumper;
 
 void leftDrive(int speed) {
+  int bias = 15;
   if (speed >= 0) {
     digitalWrite(WHEEL_DIR_LF, HIGH);
     digitalWrite(WHEEL_DIR_LB, LOW);
-    analogWrite(WHEEL_SPEED_L, speed);
+    analogWrite(WHEEL_SPEED_L, speed + bias);
   }
   else {
     digitalWrite(WHEEL_DIR_LF, LOW);
     digitalWrite(WHEEL_DIR_LB, HIGH);
-    analogWrite(WHEEL_SPEED_L, -speed);    
+    analogWrite(WHEEL_SPEED_L, -speed + bias);    
   }
 }
 
@@ -143,8 +144,8 @@ bool button2() {
 bool initialTurn()
 {
   static int startTime = -1;
-  leftDrive(175);
-  rightDrive(160);
+  leftDrive(100);
+  rightDrive(70);
   if (startTime == -1) {
     startTime = millis();
   }
@@ -156,69 +157,98 @@ bool initialTurn()
 }
 
 bool wallFind() {
-  leftDrive(150);
-  rightDrive(150);
-  if (analogRead(A0) < 750) {
+  leftDrive(90);
+  rightDrive(90);
+  if (analogRead(A0) < 780) {
     return true;
   }
   return false;
 }
 
-bool wallFollow() {
+void driveBesideWall(int targetDistance) {
   int wallSensor = analogRead(A0);
-  int offset = (wallSensor - 700) / 4;
-  Serial.println(offset);
-  if (wallSensor < 80) {
-    leftDrive(-70);
-    rightDrive(-40);
+  int offset = wallSensor - targetDistance;
+  int baseSpeed = 90;
+  int speedDiff = offset / 8;
+
+  leftDrive(baseSpeed + speedDiff);
+  rightDrive(baseSpeed - speedDiff);
+}
+
+bool farWallFollow() {
+
+  static int startTime = -1;
+
+  if (startTime == -1) {
+    startTime = millis();
   }
-  else if (offset > 0) {
-    leftDrive(130);
-    rightDrive(130 - min(offset, 70));
+
+  if (millis() - startTime > 2500) {
+    return true;
   }
-  else if (offset < 0) {
-    leftDrive(130 + max(offset, -70));
-    rightDrive(130);
-  }
-  else {
-    leftDrive(130);
-    rightDrive(130);    
+
+  driveBesideWall(780);
+  return false;
+}
+
+bool closeWallFollow() {
+  driveBesideWall(500);
+  if(analogRead(A0) < 150) {
+    return true;
   }
   return false;
 }
 
-//read the data from line sensor
-void readData() {
-  
-  // Preserve necessary information
+bool cornerReverse() {
+  leftDrive(-60);
+  rightDrive(0);
 
-  
+  if (analogRead(A0) > 730) {
+    return true;
+  }
+  return false;
+}
+
+bool lineFind() {
+  for (int i = 0; i < 8; i++) {
+    if (digitalRead(LINE_SENSOR[i]) == 1) {
+      return true;
+    }
+  }
+
+  leftDrive(70);
+  rightDrive(70);
+
+  return false;
 }
 
 bool lineFollow(){
   
   int firstSeen = -1;
+  int lastSeen = 8;
 
   for (int i = 0; i < 8; i++) {
-    int sensorValue = digitalRead(LINE_SENSOR[i]);
-    Serial.println(sensorValue);
-    if (sensorValue == 1) {
-      firstSeen = i;
-      break;
+    if (digitalRead(LINE_SENSOR[i])== 1) {
+      if (firstSeen == -1) {
+        firstSeen = i;
+      }
+      lastSeen = i;
     }
   }
+
+  int baseSpeed = 75;
+  int offset = 7 - (firstSeen + lastSeen);
+  Serial.println(offset);
+  int speedDiff = 0;
+
+  if(firstSeen == -1) speedDiff = 8;
+  else speedDiff = offset * 5;
+
+  leftDrive(baseSpeed + offset);
+  rightDrive(baseSpeed - offset);
   
-  if(firstSeen ==-1) {
-    leftDrive(0);
-    rightDrive(0);
-  }
-  else {
-    leftDrive(FOLLOW_SPEED_L[firstSeen]);
-    rightDrive(FOLLOW_SPEED_R[firstSeen]);
-  }
   return false;
 }
-
 
 void setup(){
 
@@ -288,10 +318,13 @@ void loop() {
   // State succession
   switch (state) {
     case 0: if (start()) state++; break;
-    case 1: if (lineFollow()) state++; break;
+    case 1: if (initialTurn()) state++; break;
+    case 2: if (wallFind()) state++; break;
+    case 3: if (farWallFollow()) state++; break;
+    case 4: if (closeWallFollow()) state++; break;
+    case 5: if (cornerReverse()) state++; break;
+    case 6: if (lineFind()) state++; break;
+    case 7: if (lineFollow()) state++; break;
     default: state = 0;
   }
 }
-
-
-
