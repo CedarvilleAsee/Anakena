@@ -159,14 +159,14 @@ bool initialTurn()
 bool wallFind() {
   leftDrive(90);
   rightDrive(90);
-  if (analogRead(A0) < 780) {
+  if (analogRead(R_WALL_SENSOR) < 780) {
     return true;
   }
   return false;
 }
 
 void driveBesideWall(int targetDistance) {
-  int wallSensor = analogRead(A0);
+  int wallSensor = analogRead(R_WALL_SENSOR);
   int offset = wallSensor - targetDistance;
   int baseSpeed = 90;
   int speedDiff = offset / 8;
@@ -185,44 +185,26 @@ bool farWallFollow() {
 
   if (millis() - startTime > 2500) {
     return true;
+    startTime = -1;
   }
 
   driveBesideWall(780);
   return false;
 }
 
-bool closeWallFollow() {
-  driveBesideWall(500);
-  if(analogRead(A0) < 150) {
+bool wallFollowPastRocks() {
+  static bool rockSensorStatus = false;
+  static int statusChangeCount = 0;
+  bool newStatus = analogRead(BACK_SENSOR) < 100;
+  if (newStatus != rockSensorStatus) statusChangeCount++;
+
+  if (statusChangeCount == 4) {
     return true;
   }
   return false;
 }
 
-bool cornerReverse() {
-  leftDrive(-60);
-  rightDrive(0);
-
-  if (analogRead(A0) > 730) {
-    return true;
-  }
-  return false;
-}
-
-bool lineFind() {
-  for (int i = 0; i < 8; i++) {
-    if (digitalRead(LINE_SENSOR[i]) == 1) {
-      return true;
-    }
-  }
-
-  leftDrive(70);
-  rightDrive(70);
-
-  return false;
-}
-
-bool lineFollow(){
+bool rightBiasLineFollow(){
   
   int firstSeen = -1;
   int lastSeen = 8;
@@ -241,7 +223,7 @@ bool lineFollow(){
   Serial.println(offset);
   int speedDiff = 0;
 
-  if(firstSeen == -1) speedDiff = 8;
+  if(firstSeen == -1) speedDiff = -10;
   else speedDiff = offset * 5;
 
   leftDrive(baseSpeed + offset);
@@ -321,10 +303,8 @@ void loop() {
     case 1: if (initialTurn()) state++; break;
     case 2: if (wallFind()) state++; break;
     case 3: if (farWallFollow()) state++; break;
-    case 4: if (closeWallFollow()) state++; break;
-    case 5: if (cornerReverse()) state++; break;
-    case 6: if (lineFind()) state++; break;
-    case 7: if (lineFollow()) state++; break;
+    case 4: if (wallFollowPastRocks()) state++; break;
+    case 6: if (rightBiasLineFollow()) state++; break;
     default: state = 0;
   }
 }
