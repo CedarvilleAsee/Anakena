@@ -1,4 +1,3 @@
-//Updated 1-28-17
 #include <Servo.h>
 #include "pinNumbers.h"
 #include "constants.h"
@@ -141,7 +140,7 @@ bool button2() {
   return false;
 }
 
-bool lineFollow() {
+bool lineFollow_old() {
   int firstSeen = -1;
   int lastSeen = 8;
   
@@ -173,7 +172,8 @@ bool lineFollow() {
   return false;
 }
 
-bool initialTurn() {
+bool initialTurn()
+{
   static int startTime = -1;
   leftDrive(175);
   rightDrive(160);
@@ -219,6 +219,54 @@ bool wallFollow() {
   return false;
 }
 
+//read the data from line sensor
+void readData() {
+  
+  // Preserve necessary information
+
+  
+}
+
+void lineFollow(){
+  
+  //variables
+  int lineData[8];
+  int amountSeen = 0;
+  int firstLineIndex = -1;
+
+  // Reads in the line sensor data
+  for(int i = 0; i<8; i++){
+      lineData[i] = digitalRead(LINE_SENSOR[i]);
+  }
+
+  //print the line data to serial
+  for(int i = 0; i < 8; i++){
+    Serial.print(lineData[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+  
+  // Record the line sensor's data
+  for(int i = 0; i < 8; i++) {
+    if(lineData[i] == 1) {       
+       if(firstLineIndex == -1) {
+          firstLineIndex = i;
+       }
+       amountSeen++;
+    }
+  }
+  
+  if(firstLineIndex==-1){
+    leftDrive(0);
+    rightDrive(0);
+  }
+  else{
+    leftDrive(FOLLOW_SPEED_L[firstLineIndex]);
+    rightDrive(FOLLOW_SPEED_L[firstLineIndex]);
+  }
+}
+
+
 void setup(){
 
   // LEDs
@@ -226,8 +274,8 @@ void setup(){
   pinMode(LEDY, OUTPUT);
 
   // Buttons
-  pinMode(BUTTON1, INPUT);
-  pinMode(BUTTON2, INPUT);
+  pinMode(BUTTON1, INPUT_PULLUP);
+  pinMode(BUTTON2, INPUT_PULLUP);
 
   // Line sensors
   for (int i = 0; i < 8; i++) {
@@ -265,13 +313,13 @@ void setup(){
   resetRobot();
 
   // Initial wheel power
-  digitalWrite(WHEEL_DIR_LF, HIGH);
-  digitalWrite(WHEEL_DIR_LB, HIGH);
+  //digitalWrite(WHEEL_DIR_LF, HIGH);
+  //digitalWrite(WHEEL_DIR_LB, HIGH);
     
-  digitalWrite(WHEEL_DIR_RF, HIGH);
-  digitalWrite(WHEEL_DIR_RB, HIGH);
+  //digitalWrite(WHEEL_DIR_RF, HIGH);
+  //digitalWrite(WHEEL_DIR_RB, HIGH);
   
-  digitalWrite(WHEEL_STBY, HIGH);
+  //digitalWrite(WHEEL_STBY, HIGH);
   
   // Turn  green LED  on
   digitalWrite(LEDG, HIGH);
@@ -280,22 +328,20 @@ void setup(){
   
 }
 
+
 void loop() {
   static int state = 0;
-  Serial.println(analogRead(A0));
-  if (button2()) state = 0;
+
+  //state machine code
+  if (button2()){
+    state = 0;
+  }
   switch (state) {
-    case 0: if (start()) state++; 
-    break;
-    case 1: if (initialTurn()) state++;
-    break;
-    case 2: if (wallFind()) state++;
-    break;
-    case 3: if (wallFollow()) state++;
-    break;
-    case 4: state = 0;
-    break;
+    case 0: start(); break;
+    case 1: lineFollow(); break;
+    default: state=0;
   }
 }
+
 
 
