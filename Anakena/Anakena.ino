@@ -140,38 +140,6 @@ bool button2() {
   return false;
 }
 
-bool lineFollow_old() {
-  int firstSeen = -1;
-  int lastSeen = 8;
-  
-  for (int i = 0; i < 8; i++) {
-    if (digitalRead(LINE_SENSOR[i]) == 1) {
-      if (firstSeen == -1) {
-        firstSeen = i;
-      }
-      lastSeen = i;
-    }
-  }
-  
-  int offset = lastSeen + firstSeen;
-  Serial.println(offset);
-
-  if (offset < 7) {
-    leftDrive(100);
-    rightDrive(OFFSET_SPEED[7 - offset]);
-  }
-  else if (offset > 7) {
-    rightDrive(100);
-    leftDrive(OFFSET_SPEED[offset - 7]);
-  }
-  else {
-    leftDrive(100);
-    rightDrive(100);
-  }
-  
-  return false;
-}
-
 bool initialTurn()
 {
   static int startTime = -1;
@@ -227,43 +195,28 @@ void readData() {
   
 }
 
-void lineFollow(){
+bool lineFollow(){
   
-  //variables
-  int lineData[8];
-  int amountSeen = 0;
-  int firstLineIndex = -1;
+  int firstSeen = -1;
 
-  // Reads in the line sensor data
-  for(int i = 0; i<8; i++){
-      lineData[i] = digitalRead(LINE_SENSOR[i]);
-  }
-
-  //print the line data to serial
-  for(int i = 0; i < 8; i++){
-    Serial.print(lineData[i]);
-    Serial.print(" ");
-  }
-  Serial.println();
-  
-  // Record the line sensor's data
-  for(int i = 0; i < 8; i++) {
-    if(lineData[i] == 1) {       
-       if(firstLineIndex == -1) {
-          firstLineIndex = i;
-       }
-       amountSeen++;
+  for (int i = 0; i < 8; i++) {
+    int sensorValue = digitalRead(LINE_SENSOR[i]);
+    Serial.println(sensorValue);
+    if (sensorValue == 1) {
+      firstSeen = i;
+      break;
     }
   }
   
-  if(firstLineIndex==-1){
+  if(firstSeen ==-1) {
     leftDrive(0);
     rightDrive(0);
   }
-  else{
-    leftDrive(FOLLOW_SPEED_L[firstLineIndex]);
-    rightDrive(FOLLOW_SPEED_L[firstLineIndex]);
+  else {
+    leftDrive(FOLLOW_SPEED_L[firstSeen]);
+    rightDrive(FOLLOW_SPEED_R[firstSeen]);
   }
+  return false;
 }
 
 
@@ -281,8 +234,6 @@ void setup(){
   for (int i = 0; i < 8; i++) {
     pinMode(LINE_SENSOR[i], INPUT);
   }
-
-  //
 
   // Servos
   pinMode(L_SCOOP, OUTPUT);
@@ -313,13 +264,13 @@ void setup(){
   resetRobot();
 
   // Initial wheel power
-  //digitalWrite(WHEEL_DIR_LF, HIGH);
-  //digitalWrite(WHEEL_DIR_LB, HIGH);
-    
-  //digitalWrite(WHEEL_DIR_RF, HIGH);
-  //digitalWrite(WHEEL_DIR_RB, HIGH);
+  digitalWrite(WHEEL_DIR_LF, HIGH);
+  digitalWrite(WHEEL_DIR_LB, HIGH);
   
-  //digitalWrite(WHEEL_STBY, HIGH);
+  digitalWrite(WHEEL_DIR_RF, HIGH);
+  digitalWrite(WHEEL_DIR_RB, HIGH);
+  
+  digitalWrite(WHEEL_STBY, HIGH);
   
   // Turn  green LED  on
   digitalWrite(LEDG, HIGH);
@@ -332,14 +283,13 @@ void setup(){
 void loop() {
   static int state = 0;
 
-  //state machine code
-  if (button2()){
-    state = 0;
-  }
+  if (button2()) state = 0;
+
+  // State succession
   switch (state) {
-    case 0: start(); break;
-    case 1: lineFollow(); break;
-    default: state=0;
+    case 0: if (start()) state++; break;
+    case 1: if (lineFollow()) state++; break;
+    default: state = 0;
   }
 }
 
