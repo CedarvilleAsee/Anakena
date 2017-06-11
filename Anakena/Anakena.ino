@@ -247,6 +247,7 @@ void setup(){
     pinMode(LINE_SENSOR[i], INPUT);
   }
 
+
   // Servos
   pinMode(L_SCOOP, OUTPUT);
   pinMode(R_SCOOP, OUTPUT);
