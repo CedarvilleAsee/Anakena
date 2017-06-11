@@ -1,0 +1,85 @@
+KEY
+State
+	what to do : exit condition
+/KEY
+
+
+STATES
+spainFindWall
+	turn right : close to wall
+
+spainFollowWall
+	follow wall : barrel counter == 2
+
+trinidadTurnToLine
+	veer left : see the line
+
+trinidadFollowLine
+	follow line : see left barrel
+
+trinidadCollect
+	follow line, collect left barrel, dispense left barrel : left barrel collect done
+
+martiniqueFollowLine
+	follow line : no more line
+
+martiniqueFindCorner
+	follow wall : see left barrel
+
+martiniqueCollect
+	follow wall, collect left barrel, dispense left barrel : wall sensor inside close range
+
+martiniqueBackupTurn
+	reverse left wheel : far enough away from wall
+
+bahamasFollowWall
+	follow wall : inside close range
+
+bahamasBackupTurn
+	reverse left wheel : don't see the wall
+	
+bahamasFindSecondLineAndFollow // need to finish both of the states before exiting
+	findSecondLine
+		drive forwards : passed over one line and on the second
+	CollectAndDispense
+		collect, dispense : collected and dispensed
+		
+hispaniolaCollectAndDispense
+	line follow, collect, dispense : collected and dispensed
+	
+hispaniolaLoseWall
+	wall follow : lost wall for amount of time
+	
+hispaniolaFindWallAfter
+	veer right : close enough to wall
+
+hispaniolaFollowWall
+	follow wall : line sensor sees hurricane
+	
+spainFindLine
+	turn left : sees line
+	
+spainFindEndOfLine
+	follow line : doesn't see line
+	
+spainHardLeft
+	turn left with both wheels : on the line
+	
+spainFindIsland
+	follow line : amount of time after seeing spainFindEndOfLine
+	
+spainTurnToDump
+	hard turn right : front sensor starts getting farther away
+	
+spainGetGrounded
+	drive forwards : wall sensor close enough
+	
+spainDump
+	dump front bin (maybe twice) : dumped
+
+waitForButton
+	check for go button : go button pressed
+	
+celebrate
+	backup and spin and flap arms
+/STATES
