@@ -5,116 +5,49 @@
 // Servos
 Servo leftScoop, rightScoop, rightDispenser, leftDispenser, dumper;
 
+// Drives the left wheel at a specified speed.
 void leftDrive(int speed) {
+
+  // The bias accounts for the extra weight of the batteries on the left side
+  // of the robot.
   int bias = 15;
+
+  // Check the sign of the speed. If the speed is negative, we drive the wheel
+  // backward.
   if (speed >= 0) {
+    // HIGH-LOW combination drives wheel forward.
     digitalWrite(WHEEL_DIR_LF, HIGH);
     digitalWrite(WHEEL_DIR_LB, LOW);
     analogWrite(WHEEL_SPEED_L, speed + bias);
   }
   else {
+    // LOW-HIGH combination drives wheel backward.
     digitalWrite(WHEEL_DIR_LF, LOW);
     digitalWrite(WHEEL_DIR_LB, HIGH);
     analogWrite(WHEEL_SPEED_L, -speed + bias);    
   }
 }
 
+// Drives the right wheel at the specified speed.
 void rightDrive(int speed) {
+  // Check the sign of the speed. If the speed is negative, we drive the wheel
+  // backward.
   if (speed >= 0) {
+    // HIGH-LOW combination drives wheel forward.
     digitalWrite(WHEEL_DIR_RF, HIGH);
     digitalWrite(WHEEL_DIR_RB, LOW);
     analogWrite(WHEEL_SPEED_R, speed);
   }
   else {
+    // LOW-HIGH combination drives wheel backward.
     digitalWrite(WHEEL_DIR_RF, LOW);
     digitalWrite(WHEEL_DIR_RB, HIGH);
     analogWrite(WHEEL_SPEED_R, -speed);    
   }
 }
 
-bool leftCollect(){
-  static int startTime = -1;
-  if(startTime == -1){
-    startTime = millis();
-    leftScoop.write(L_SCOOP_DOWN);
-  }
-  else if(millis() - startTime > 500){
-    leftScoop.write(L_SCOOP_UP);
-    startTime = -1;
-    return true;
-  }
-  return false;
-}
-
-bool rightCollect(){
-  static int startTime = -1;
-  if(startTime == -1){
-    startTime = millis();
-    rightScoop.write(R_SCOOP_DOWN);
-  }
-  else if(millis() - startTime > 500){
-    rightScoop.write(R_SCOOP_UP);
-    startTime = -1;
-    return true;
-  }
-  return false;
-}
-
-bool dump() {
-  static int startTime = -1;
-  if(startTime == -1){
-    startTime = millis();
-    dumper.write(DUMP_UP);
-  }
-  else if(millis() - startTime > 700){
-    dumper.write(DUMP_DOWN);
-    startTime = -1;
-    return true;
-  }
-  return false;
-}
-
-bool rightDispense(){
-  static int startTime = -1;
-  if(startTime == -1){
-    startTime = millis();
-    rightDispenser.write(R_DISPENSER_OUT);
-  }
-  else if(millis() - startTime > 500){
-    rightDispenser.write(R_DISPENSER_IN);
-    startTime = -1;
-    return true;
-  }
-  return false;
-}
-
-bool leftDispense(){
-  static int startTime = -1;
-  if(startTime == -1){
-    startTime = millis();
-    leftDispenser.write(L_DISPENSER_OUT);
-  }
-  else if(millis() - startTime > 500){
-    leftDispenser.write(L_DISPENSER_IN);
-    startTime = -1;
-    return true;
-  }
-  return false;
-}
-
-bool delayState(int amount) {
-  static int startTime = -1;
-  if (startTime == -1) {
-    startTime = millis();
-  }
-  else if (millis() - startTime > amount) {
-    startTime = -1;
-    return true;
-  }
-  return false;
-}
-
-void resetRobot() {  
+// Set servos and motors to their initial positions and speeds.
+void resetRobot() {
   leftScoop.write(L_SCOOP_UP);
   rightScoop.write(R_SCOOP_UP);
   dumper.write(DUMP_DOWN);
@@ -124,6 +57,7 @@ void resetRobot() {
   leftDrive(0);
 }
 
+// Starting state; makes sure the robot is reset.
 bool start() {
   if (digitalRead(BUTTON1) == LOW) {
     return true;
@@ -134,15 +68,8 @@ bool start() {
   }
 }
 
-bool button2() {
-  if (digitalRead(BUTTON2) == LOW) {
-    return true;
-  }
-  return false;
-}
-
-bool initialTurn()
-{
+// Beginning turn from the starting position to aim toward the wall.
+bool initialTurn() {
   static int startTime = -1;
   leftDrive(100);
   rightDrive(70);
@@ -156,6 +83,7 @@ bool initialTurn()
   return false;
 }
 
+// Travel straight until the sees the wall at a reasonable distance away.
 bool wallFind() {
   leftDrive(90);
   rightDrive(90);
@@ -165,6 +93,8 @@ bool wallFind() {
   return false;
 }
 
+// Helper function for a couple of states. Wall follows at a specified distance
+// from the wall.
 void driveBesideWall(int targetDistance) {
   int wallSensor = analogRead(R_WALL_SENSOR);
   int offset = wallSensor - targetDistance;
@@ -175,6 +105,9 @@ void driveBesideWall(int targetDistance) {
   rightDrive(baseSpeed - speedDiff);
 }
 
+// Follow the wall at a somewhat far distance for 2.5 seconds; this allows the
+// robot to come parallel to the wall without danger of colliding into the
+// wall.
 bool farWallFollow() {
 
   static int startTime = -1;
@@ -184,31 +117,50 @@ bool farWallFollow() {
   }
 
   if (millis() - startTime > 2500) {
-    return true;
     startTime = -1;
+    return true;
   }
 
   driveBesideWall(780);
   return false;
 }
 
+// Wall follow past the two first rocks. This state follows the wall closer
+// than the previous state because we do not want to kick the rocks.
 bool wallFollowPastRocks() {
+
+  // Keep track of whether the sensor sees a rock.
   static bool rockSensorStatus = false;
+  
+  // Keep track of the times the sensor has changed whether it sees a rock.
   static int statusChangeCount = 0;
-  bool newStatus = analogRead(BACK_SENSOR) < 100;
+
+  // Get the new status from the sensor.
+  bool newStatus = analogRead(BACK_SENSOR) < 300;
+
+  // If the status of the sensor has changed, increment the count.
   if (newStatus != rockSensorStatus) statusChangeCount++;
 
+  // Rock, no rock, rock, no rock -> 4 status changes -> we move to the next
+  // state.
   if (statusChangeCount == 4) {
+    // Reset static variables for possible next time.
+    rockSensorStatus = false;
+    statusChangeCount = 0;
     return true;
   }
+
+  driveBesideWall(550);
   return false;
 }
 
+// Line follow with a bias toward the right; if not line sensor is triggered,
+// we will assume the line is to our right.
 bool rightBiasLineFollow(){
   
+  // Calculate the first and last sensor which see the line.
   int firstSeen = -1;
   int lastSeen = 8;
-
   for (int i = 0; i < 8; i++) {
     if (digitalRead(LINE_SENSOR[i])== 1) {
       if (firstSeen == -1) {
@@ -218,9 +170,12 @@ bool rightBiasLineFollow(){
     }
   }
 
-  int baseSpeed = 75;
+  // Calculate the robots current offset. We want the first and last sensors to
+  // be 3 and 4, so the sum should be 7, meaning the offset should be 0 if we
+  // are centered.
   int offset = 7 - (firstSeen + lastSeen);
-  Serial.println(offset);
+
+  int baseSpeed = 75;
   int speedDiff = 0;
 
   if(firstSeen == -1) speedDiff = -10;
@@ -246,7 +201,6 @@ void setup(){
   for (int i = 0; i < 8; i++) {
     pinMode(LINE_SENSOR[i], INPUT);
   }
-
 
   // Servos
   pinMode(L_SCOOP, OUTPUT);
@@ -296,7 +250,9 @@ void setup(){
 void loop() {
   static int state = 0;
 
-  if (button2()) state = 0;
+  // Button 2 resets the state machine. This is useful as a less violent way to
+  // reset the robot then using the power switch.
+  if (digitalRead(BUTTON2) == LOW) state = 0;
 
   // State succession
   switch (state) {
@@ -305,7 +261,7 @@ void loop() {
     case 2: if (wallFind()) state++; break;
     case 3: if (farWallFollow()) state++; break;
     case 4: if (wallFollowPastRocks()) state++; break;
-    case 6: if (rightBiasLineFollow()) state++; break;
+    case 5: if (rightBiasLineFollow()) state++; break;
     default: state = 0;
   }
 }
