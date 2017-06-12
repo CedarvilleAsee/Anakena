@@ -5,12 +5,36 @@
 // Servos
 Servo leftScoop, rightScoop, rightDispenser, leftDispenser, dumper;
 
+int digit1, digit2, digit3, digit4;
+void writeDigit1(int x) {
+  digit1 = x % 10;
+}
+void writeDigit2(int x) {
+  digit2 = x % 10;
+}
+void writeDigit3(int x) {
+  digit3 = x % 10;
+}
+void writeDigit4(int x) {
+  digit4 = x % 10;
+}
+void writeDigits() {
+  static int lastTime = millis();
+  if (millis() - lastTime > 100) {
+    Serial3.write(0x76);
+    int num = 1000 * digit1 + 100 * digit2 + 10 * digit3 + digit4;
+    Serial3.print(num);
+    lastTime = millis();
+  }
+}
+
+#ifndef MANUAL
 // Drives the left wheel at a specified speed.
 void leftDrive(int speed) {
 
   // The bias accounts for the extra weight of the batteries on the left side
   // of the robot.
-  int bias = 15;
+  int bias = 0;
 
   // Check the sign of the speed. If the speed is negative, we drive the wheel
   // backward.
@@ -46,6 +70,11 @@ void rightDrive(int speed) {
   }
 }
 
+#else
+void leftDrive(int speed) { }
+void rightDrive(int speed) { }
+#endif
+
 // Set servos and motors to their initial positions and speeds.
 void resetRobot() {
   leftScoop.write(L_SCOOP_UP);
@@ -53,8 +82,14 @@ void resetRobot() {
   dumper.write(DUMP_DOWN);
   rightDispenser.write(R_DISPENSER_IN);
   leftDispenser.write(L_DISPENSER_IN);
-  rightDrive(0);
-  leftDrive(0);
+
+  digitalWrite(WHEEL_DIR_LF, LOW);
+  digitalWrite(WHEEL_DIR_LB, LOW);
+  
+  digitalWrite(WHEEL_DIR_RF, LOW);
+  digitalWrite(WHEEL_DIR_RB, LOW);
+  
+  digitalWrite(WHEEL_STBY, HIGH);
 }
 
 // Starting state; makes sure the robot is reset.
@@ -135,11 +170,19 @@ bool wallFollowPastRocks() {
   // Keep track of the times the sensor has changed whether it sees a rock.
   static int statusChangeCount = 0;
 
+  writeDigit2(statusChangeCount);
+
   // Get the new status from the sensor.
-  bool newStatus = analogRead(BACK_SENSOR) < 300;
+  int backSensor = analogRead(BACK_SENSOR);
+  writeDigit3(backSensor / 100);
+  writeDigit4(backSensor / 10);
 
   // If the status of the sensor has changed, increment the count.
-  if (newStatus != rockSensorStatus) statusChangeCount++;
+  if ((backSensor < 500 && !rockSensorStatus) || 
+      (backSensor > 700 && rockSensorStatus)) {
+    statusChangeCount++;
+    rockSensorStatus = !rockSensorStatus;
+  }
 
   // Rock, no rock, rock, no rock -> 4 status changes -> we move to the next
   // state.
@@ -154,9 +197,46 @@ bool wallFollowPastRocks() {
   return false;
 }
 
+bool turnToFindLine() {
+  leftDrive(0);
+  rightDrive(90);
+  if (digitalRead(LINE_SENSOR[7]) == 1) {
+    return true;
+  }
+  return false;
+}
+
+bool clearCorner() {
+  static int startTime = -1;
+
+  leftDrive(90);
+  rightDrive(90);
+
+  if (startTime == -1) {
+    startTime = millis();
+  }
+
+  if (millis() - startTime > 300) {
+    startTime = -1;
+    return true;
+  }
+
+  return false;
+}
+
+bool lineUpForLineFollow() {
+
+  leftDrive(90);
+  rightDrive(0);
+  if (digitalRead(LINE_SENSOR[3]) == 1) {
+    return true;
+  }
+  return false;
+}
+
 // Line follow with a bias toward the right; if not line sensor is triggered,
 // we will assume the line is to our right.
-bool rightBiasLineFollow(){
+bool lineFollow(){
   
   // Calculate the first and last sensor which see the line.
   int firstSeen = -1;
@@ -170,6 +250,13 @@ bool rightBiasLineFollow(){
     }
   }
 
+  writeDigit2(firstSeen);
+  writeDigit3(lastSeen);
+
+  if (firstSeen == -1) {
+    return true;
+  }
+
   // Calculate the robots current offset. We want the first and last sensors to
   // be 3 and 4, so the sum should be 7, meaning the offset should be 0 if we
   // are centered.
@@ -178,13 +265,21 @@ bool rightBiasLineFollow(){
   int baseSpeed = 75;
   int speedDiff = 0;
 
-  if(firstSeen == -1) speedDiff = -10;
-  else speedDiff = offset * 5;
+  speedDiff = offset * 5;
 
-  leftDrive(baseSpeed + offset);
-  rightDrive(baseSpeed - offset);
+  writeDigit4(speedDiff);
+
+
+  leftDrive(baseSpeed + speedDiff);
+  rightDrive(baseSpeed - speedDiff);
   
   return false;
+}
+
+bool stop() {
+  leftDrive(0);
+  rightDrive(0);
+  return true;
 }
 
 void setup(){
@@ -196,11 +291,6 @@ void setup(){
   // Buttons
   pinMode(BUTTON1, INPUT_PULLUP);
   pinMode(BUTTON2, INPUT_PULLUP);
-
-  // Line sensors
-  for (int i = 0; i < 8; i++) {
-    pinMode(LINE_SENSOR[i], INPUT);
-  }
 
   // Servos
   pinMode(L_SCOOP, OUTPUT);
@@ -220,6 +310,16 @@ void setup(){
   
   pinMode(WHEEL_STBY, OUTPUT);
 
+  // Initialize sensor pins.
+  for (int i = 0; i < 8; i++) {
+    pinMode(LINE_SENSOR[i], INPUT);
+  }
+
+  pinMode(R_WALL_SENSOR, INPUT);
+  pinMode(R_ROCK_SENSOR, INPUT);
+  pinMode(L_ROCK_SENSOR, INPUT);
+  pinMode(BACK_SENSOR, INPUT);
+
   // Attach servos
   leftScoop.attach(L_SCOOP);
   rightScoop.attach(R_SCOOP);
@@ -227,41 +327,45 @@ void setup(){
   leftDispenser.attach(L_DISPENSER);
   dumper.attach(DUMPER);
 
-  // Initial servo placement
+  // Initial robot configuration
   resetRobot();
-
-  // Initial wheel power
-  digitalWrite(WHEEL_DIR_LF, HIGH);
-  digitalWrite(WHEEL_DIR_LB, HIGH);
-  
-  digitalWrite(WHEEL_DIR_RF, HIGH);
-  digitalWrite(WHEEL_DIR_RB, HIGH);
-  
-  digitalWrite(WHEEL_STBY, HIGH);
   
   // Turn  green LED  on
   digitalWrite(LEDG, HIGH);
 
   Serial.begin(115200);
-  
+  Serial3.begin(9600);
 }
 
+void breakpoint() {
+  while(digitalRead(BUTTON2) == HIGH) {
+    delay(50);
+  }
+}
 
 void loop() {
-  static int state = 0;
 
+  static int state = 0;
   // Button 2 resets the state machine. This is useful as a less violent way to
   // reset the robot then using the power switch.
   if (digitalRead(BUTTON2) == LOW) state = 0;
 
+
+  writeDigit1(state);
+  writeDigits();
+
   // State succession
   switch (state) {
-    case 0: if (start()) state++; break;
+    case 0: if (start()) state = 8; break;
     case 1: if (initialTurn()) state++; break;
     case 2: if (wallFind()) state++; break;
     case 3: if (farWallFollow()) state++; break;
     case 4: if (wallFollowPastRocks()) state++; break;
-    case 5: if (rightBiasLineFollow()) state++; break;
+    case 5: if (turnToFindLine()) state++; break;
+    case 6: if (clearCorner()) state++; break;
+    case 7: if (lineUpForLineFollow()) state++; break;
+    case 8: if (lineFollow()) state++; break;
+    case 9: if (stop()) state++; break;
     default: state = 0;
   }
 }
