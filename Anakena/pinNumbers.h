@@ -9,8 +9,8 @@ int LINE_SENSOR[] = {39, 41, 43, 45, 47, 49, 51, 53};
 
 // Wall sensors
 const int R_WALL_SENSOR = A0;
-const int R_ROCK_SENSOR = A1;
-const int L_ROCK_SENSOR = A6;
+const int R_BARREL_SENSOR = A1;
+const int L_BARREL_SENSOR = A6;
 const int BACK_SENSOR = A7;
 
 // Buttons

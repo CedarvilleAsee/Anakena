@@ -42,13 +42,13 @@ void leftDrive(int speed) {
     // HIGH-LOW combination drives wheel forward.
     digitalWrite(WHEEL_DIR_LF, HIGH);
     digitalWrite(WHEEL_DIR_LB, LOW);
-    analogWrite(WHEEL_SPEED_L, speed + bias);
+    analogWrite(WHEEL_SPEED_L, speed);
   }
   else {
     // LOW-HIGH combination drives wheel backward.
     digitalWrite(WHEEL_DIR_LF, LOW);
     digitalWrite(WHEEL_DIR_LB, HIGH);
-    analogWrite(WHEEL_SPEED_L, -speed + bias);    
+    analogWrite(WHEEL_SPEED_L, -speed);    
   }
 }
 
@@ -239,25 +239,35 @@ bool lineUpForLineFollow() {
 bool lineFollow(){
   
   // Calculate the first and last sensor which see the line.
-  int firstSeen = -1;
+  int firstSeen = 9;
   int lastSeen = 8;
   for (int i = 0; i < 8; i++) {
+    /*Serial.print(digitalRead(LINE_SENSOR[i]));*/
+    Serial.print(" ");
     if (digitalRead(LINE_SENSOR[i])== 1) {
-      if (firstSeen == -1) {
+      if (firstSeen == 9) {
         firstSeen = i;
       }
       lastSeen = i;
     }
   }
 
+/*  Serial.print(firstSeen);
+  Serial.print(" ");
+  Serial.println(lastSeen);*/
+
+  
+  leftDrive(FOLLOW_SPEED_L[firstSeen]);
+  rightDrive(FOLLOW_SPEED_R[firstSeen]);
+
   writeDigit2(firstSeen);
   writeDigit3(lastSeen);
 
-  if (firstSeen == -1) {
+  if (analogRead(R_BARREL_SENSOR) < 100) {
     return true;
   }
 
-  // Calculate the robots current offset. We want the first and last sensors to
+  /*// Calculate the robots current offset. We want the first and last sensors to
   // be 3 and 4, so the sum should be 7, meaning the offset should be 0 if we
   // are centered.
   int offset = 7 - (firstSeen + lastSeen);
@@ -269,9 +279,8 @@ bool lineFollow(){
 
   writeDigit4(speedDiff);
 
-
-  leftDrive(baseSpeed + speedDiff);
-  rightDrive(baseSpeed - speedDiff);
+  /*leftDrive(baseSpeed /*+ speedDiff);
+  rightDrive(baseSpeed /*- speedDiff);*/
   
   return false;
 }
@@ -316,8 +325,8 @@ void setup(){
   }
 
   pinMode(R_WALL_SENSOR, INPUT);
-  pinMode(R_ROCK_SENSOR, INPUT);
-  pinMode(L_ROCK_SENSOR, INPUT);
+  pinMode(R_BARREL_SENSOR, INPUT);
+  pinMode(L_BARREL_SENSOR, INPUT);
   pinMode(BACK_SENSOR, INPUT);
 
   // Attach servos
@@ -335,6 +344,12 @@ void setup(){
 
   Serial.begin(115200);
   Serial3.begin(9600);
+  Serial3.write(0x76);
+  writeDigit1(1);
+  writeDigit2(2);
+  writeDigit3(3);
+  writeDigit4(4);
+  writeDigits();
 }
 
 void breakpoint() {
@@ -356,7 +371,7 @@ void loop() {
 
   // State succession
   switch (state) {
-    case 0: if (start()) state = 8; break;
+    case 0: if (start()) state++; break;
     case 1: if (initialTurn()) state++; break;
     case 2: if (wallFind()) state++; break;
     case 3: if (farWallFollow()) state++; break;
