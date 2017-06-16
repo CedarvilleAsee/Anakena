@@ -4,8 +4,16 @@
 
 // Servos
 Servo leftScoop, rightScoop, rightDispenser, leftDispenser, dumper;
+int pv;
+int val_R_WALL_SENSOR;
+int val_R_BARREL_SENSOR;
+int val_L_BARREL_SENSOR;
+int val_BACK_SENSOR;
+int firstSeen = 9;
+int lastSeen = 8;
+int amountSeen = 0;
 
-int digit1, digit2, digit3, digit4;
+/*int digit1, digit2, digit3, digit4;
 void writeDigit1(int x) {
   digit1 = x % 10;
 }
@@ -26,7 +34,7 @@ void writeDigits() {
     Serial3.print(num);
     lastTime = millis();
   }
-}
+}*/
 
 #ifndef MANUAL
 // Drives the left wheel at a specified speed.
@@ -75,6 +83,38 @@ void leftDrive(int speed) { }
 void rightDrive(int speed) { }
 #endif
 
+void readSensors(){
+
+  val_R_WALL_SENSOR =   analogRead(R_WALL_SENSOR);
+  val_R_BARREL_SENSOR = analogRead(R_BARREL_SENSOR);
+  val_L_BARREL_SENSOR = analogRead(L_BARREL_SENSOR);
+  val_BACK_SENSOR =     analogRead(BACK_SENSOR);
+
+  //Line Sensor
+  // Calculate the first and last sensor which see the line.
+  firstSeen = 9;
+  lastSeen = 8;
+  amountSeen = 0;
+  for (int i = 0; i < 8; i++) {
+    Serial.print(digitalRead(LINE_SENSOR[i]));
+    Serial.print(" ");
+    if (digitalRead(LINE_SENSOR[i])== 1) {
+      if (firstSeen == 9) {
+        firstSeen = i;
+      }
+      lastSeen = i;
+      amountSeen++;
+    }
+  }
+  Serial.print(" | ");
+  Serial.print(firstSeen);
+  Serial.print(" ");
+  Serial.print(lastSeen);
+  Serial.print(" ");
+  Serial.println(amountSeen);
+}
+
+
 // Set servos and motors to their initial positions and speeds.
 void resetRobot() {
   leftScoop.write(L_SCOOP_UP);
@@ -92,6 +132,39 @@ void resetRobot() {
   digitalWrite(WHEEL_STBY, HIGH);
 }
 
+bool scoopL(){
+  int startTime = millis();
+  leftScoop.write(L_SCOOP_DOWN);
+  //wait before bringing the scoop back up
+  while(millis()-startTime < 500){}
+  leftScoop.write(L_SCOOP_UP);
+  return true;
+}
+bool scoopR(){
+  int startTime = millis();
+  rightScoop.write(R_SCOOP_DOWN);
+  //wait before bringing the scoop back up
+  while(millis()-startTime < 500){}
+  rightScoop.write(R_SCOOP_UP);
+  return true;
+}
+bool dispenseL(){
+  int startTime = millis();
+  leftDispenser.write(L_DISPENSER_OUT);
+  //wait before bringing the scoop back up
+  while(millis()-startTime < 210){}
+  leftDispenser.write(L_DISPENSER_IN);
+  return true;
+}
+bool dispenseR(){
+  int startTime = millis();
+  rightDispenser.write(R_DISPENSER_OUT);
+  //wait before bringing the scoop back up
+  while(millis()-startTime < 210){}
+  rightDispenser.write(R_DISPENSER_IN);
+  return true;
+}
+
 // Starting state; makes sure the robot is reset.
 bool start() {
   if (digitalRead(BUTTON1) == LOW) {
@@ -99,6 +172,7 @@ bool start() {
   }
   else {
     resetRobot();
+    pv=val_R_BARREL_SENSOR;
     return false;
   }
 }
@@ -130,11 +204,11 @@ bool wallFind() {
 
 // Helper function for a couple of states. Wall follows at a specified distance
 // from the wall.
-void driveBesideWall(int targetDistance) {
+void driveBesideWall(int targetDistance, int theSpeed) {
   int wallSensor = analogRead(R_WALL_SENSOR);
   int offset = wallSensor - targetDistance;
-  int baseSpeed = 90;
-  int speedDiff = offset / 8;
+  int baseSpeed = theSpeed;
+  int speedDiff = offset / (theSpeed/12);
 
   leftDrive(baseSpeed + speedDiff);
   rightDrive(baseSpeed - speedDiff);
@@ -156,7 +230,7 @@ bool farWallFollow() {
     return true;
   }
 
-  driveBesideWall(780);
+  driveBesideWall(780,180);
   return false;
 }
 
@@ -170,13 +244,9 @@ bool wallFollowPastRocks() {
   // Keep track of the times the sensor has changed whether it sees a rock.
   static int statusChangeCount = 0;
 
-  writeDigit2(statusChangeCount);
-
   // Get the new status from the sensor.
   int backSensor = analogRead(BACK_SENSOR);
-  writeDigit3(backSensor / 100);
-  writeDigit4(backSensor / 10);
-
+  
   // If the status of the sensor has changed, increment the count.
   if ((backSensor < 500 && !rockSensorStatus) || 
       (backSensor > 700 && rockSensorStatus)) {
@@ -193,7 +263,7 @@ bool wallFollowPastRocks() {
     return true;
   }
 
-  driveBesideWall(550);
+  driveBesideWall(550,90);
   return false;
 }
 
@@ -228,61 +298,47 @@ bool lineUpForLineFollow() {
 
   leftDrive(90);
   rightDrive(0);
+  pv=digitalRead(LINE_SENSOR[3]);
   if (digitalRead(LINE_SENSOR[3]) == 1) {
     return true;
   }
   return false;
 }
 
-// Line follow with a bias toward the right; if not line sensor is triggered,
-// we will assume the line is to our right.
-bool lineFollow(){
-  
-  // Calculate the first and last sensor which see the line.
-  int firstSeen = 9;
-  int lastSeen = 8;
-  for (int i = 0; i < 8; i++) {
-    /*Serial.print(digitalRead(LINE_SENSOR[i]));*/
-    Serial.print(" ");
-    if (digitalRead(LINE_SENSOR[i])== 1) {
-      if (firstSeen == 9) {
-        firstSeen = i;
-      }
-      lastSeen = i;
-    }
-  }
+// Method that only does line following. Since we will be using line following a lot, but have different exit conditions
+// we can simply call this method and leave the exit conditions to the individual states to deal with.
+void lineFollow(){
 
-/*  Serial.print(firstSeen);
-  Serial.print(" ");
-  Serial.println(lastSeen);*/
+    leftDrive(FOLLOW_SPEED_L[firstSeen]);
+    rightDrive(FOLLOW_SPEED_R[firstSeen]);
+    /*Serial3.print("HELLO ");
+    Serial3.print(firstSeen);
+    Serial3.print(" ");
+    Serial3.print(FOLLOW_SPEED_L[firstSeen]);
+    Serial3.print(" ");
+    Serial3.println(FOLLOW_SPEED_R[firstSeen]);*/
+}
 
-  
-  leftDrive(FOLLOW_SPEED_L[firstSeen]);
-  rightDrive(FOLLOW_SPEED_R[firstSeen]);
+bool lineFollowToBarrel(){
 
-  writeDigit2(firstSeen);
-  writeDigit3(lastSeen);
+  //line follow to the barrel
+  lineFollow();
 
-  if (analogRead(R_BARREL_SENSOR) < 100) {
+  if (analogRead(R_BARREL_SENSOR) < 200) {
     return true;
   }
-
-  /*// Calculate the robots current offset. We want the first and last sensors to
-  // be 3 and 4, so the sum should be 7, meaning the offset should be 0 if we
-  // are centered.
-  int offset = 7 - (firstSeen + lastSeen);
-
-  int baseSpeed = 75;
-  int speedDiff = 0;
-
-  speedDiff = offset * 5;
-
-  writeDigit4(speedDiff);
-
-  /*leftDrive(baseSpeed /*+ speedDiff);
-  rightDrive(baseSpeed /*- speedDiff);*/
   
   return false;
+}
+
+bool scoopBarrel1(){
+  int startTime=millis();
+  //line follow
+  lineFollow();
+  rightDispenser.write(R_DISPENSER_OUT);
+  rightScoop.write(R_SCOOP_DOWN);
+  while(millis()-startTime < 500){}
+  return true;
 }
 
 bool stop() {
@@ -344,12 +400,7 @@ void setup(){
 
   Serial.begin(115200);
   Serial3.begin(9600);
-  Serial3.write(0x76);
-  writeDigit1(1);
-  writeDigit2(2);
-  writeDigit3(3);
-  writeDigit4(4);
-  writeDigits();
+  Serial3.write("hello bt");
 }
 
 void breakpoint() {
@@ -360,14 +411,15 @@ void breakpoint() {
 
 void loop() {
 
+  readSensors();
   static int state = 0;
   // Button 2 resets the state machine. This is useful as a less violent way to
   // reset the robot then using the power switch.
   if (digitalRead(BUTTON2) == LOW) state = 0;
 
-
-  writeDigit1(state);
-  writeDigits();
+  /*Serial3.print(state);
+  Serial3.print(" - ");
+  Serial3.println(pv);*/
 
   // State succession
   switch (state) {
@@ -379,8 +431,9 @@ void loop() {
     case 5: if (turnToFindLine()) state++; break;
     case 6: if (clearCorner()) state++; break;
     case 7: if (lineUpForLineFollow()) state++; break;
-    case 8: if (lineFollow()) state++; break;
-    case 9: if (stop()) state++; break;
+    case 8: if (lineFollowToBarrel()) state++; break;
+    case 9: if (scoopBarrel1()) state++; break;
+    case 10: if (stop()) state++; break;
     default: state = 0;
   }
 }

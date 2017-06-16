@@ -5,6 +5,7 @@ const int BACK_SENSOR = A7;
 
 void setup() {
   Serial.begin(115200);
+  Serial3.begin(9600);
   pinMode(R_WALL_SENSOR, INPUT);
   pinMode(R_ROCK_SENSOR, INPUT);
   pinMode(L_ROCK_SENSOR, INPUT);
@@ -13,7 +14,9 @@ void setup() {
 
 void loop() {
   Serial.print("Right wall: ");
+  Serial3.print("Right wall: ");
   Serial.println(analogRead(R_WALL_SENSOR));
+  Serial3.println(analogRead(R_WALL_SENSOR));
 
   Serial.print("Right rock: ");
   Serial.println(analogRead(R_ROCK_SENSOR));
