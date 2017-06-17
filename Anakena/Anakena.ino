@@ -37,7 +37,6 @@ void writeDigits() {
   }
 }*/
 
-#ifndef MANUAL
 // Drives the left wheel at a specified speed.
 void leftDrive(int speed) {
 
@@ -78,11 +77,6 @@ void rightDrive(int speed) {
     analogWrite(WHEEL_SPEED_R, -speed);    
   }
 }
-
-#else
-void leftDrive(int speed) { }
-void rightDrive(int speed) { }
-#endif
 
 void readSensors(){
 
@@ -311,6 +305,19 @@ bool lineFollowToBarrel(){
   return false;
 }
 
+bool scoopBarrel1(){
+  static int startTime = millis();
+  //line follow
+  lineFollow();
+  rightDispenser.write(R_DISPENSER_OUT);
+  rightScoop.write(R_SCOOP_DOWN);
+  if (millis() - startTime > 500) {
+    return true;
+  }
+  return false;
+}
+
+
 bool lineFollowTillSeeLeftBarrel(){
   //line follow to the barrel
   returnScoopers();
@@ -322,6 +329,17 @@ bool lineFollowTillSeeLeftBarrel(){
   return false;
 }
 
+bool scoopBarrel2() {
+  static int startTime = millis();
+  //line follow
+  lineFollow();
+  leftScoop.write(L_SCOOP_DOWN);
+  if (millis() - startTime > 500) {
+    return true;
+  }
+  return false;
+}
+
 bool lineFollowToCorner(){
   //line follow to the barrel
   returnScoopers();
@@ -330,26 +348,6 @@ bool lineFollowToCorner(){
     return true;
   } 
   return false;
-}
-
-
-bool scoopBarrel1(){
-  int startTime=millis();
-  //line follow
-  lineFollow();
-  rightDispenser.write(R_DISPENSER_OUT);
-  rightScoop.write(R_SCOOP_DOWN);
-  while(millis()-startTime < 500){}
-  return true;
-}
-
-bool scoopBarrel2(){
-  int startTime=millis();
-  //line follow
-  lineFollow();
-  leftScoop.write(L_SCOOP_DOWN);
-  while(millis()-startTime < 500){}
-  return true;
 }
 
 bool stop() {
