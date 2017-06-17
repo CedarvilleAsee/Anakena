@@ -1,23 +1,36 @@
-int pins[] = {39, 41, 43, 45, 47, 49, 51, 53};
-int numPins = 8;
+int LINE_SENSOR[] = {39, 41, 43, 45, 47, 49, 51, 53};
+int firstSeen = 9;
+int lastSeen = 8;
+int amountSeen = 0;
 
 void setup() {
-  // put your setup code here, to run once:
-  for (int i = 0; i < numPins; i++) {
-    pinMode(pins[i], INPUT);
+  for (int i = 0; i < 8; i++) {
+    pinMode(LINE_SENSOR[i], INPUT);
   }
   
-  Serial.begin(115200);
+  Serial3.begin(115200);
 }
 
 void loop() {
-  
-  for (int i = 0; i < numPins; i++) {
-    Serial.print("Pin ");
-    Serial.print(pins[i]);
-    Serial.print(": ");
-    Serial.println(digitalRead(pins[i]));
+  firstSeen = 9;
+  lastSeen = 8;
+  amountSeen = 0;
+  for (int i = 0; i < 8; i++) {
+    int reading = digitalRead(LINE_SENSOR[i]);
+    if (reading == 1) {
+      if (firstSeen == 9) {
+        firstSeen = i;
+      }
+      lastSeen = i;
+      amountSeen++;
+    }
+    Serial3.print(reading);
   }
-  Serial.println();
-  delay(300);
+
+  Serial3.print(" ");
+  Serial3.print(firstSeen);
+  Serial3.print(lastSeen);
+  Serial3.print(amountSeen);
+  Serial3.println();
+  delay(200);
 }
