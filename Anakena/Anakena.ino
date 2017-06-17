@@ -12,6 +12,7 @@ int val_BACK_SENSOR;
 int firstSeen = 9;
 int lastSeen = 8;
 int amountSeen = 0;
+int p = 0;
 
 /*int digit1, digit2, digit3, digit4;
 void writeDigit1(int x) {
@@ -96,8 +97,8 @@ void readSensors(){
   lastSeen = 8;
   amountSeen = 0;
   for (int i = 0; i < 8; i++) {
-    Serial.print(digitalRead(LINE_SENSOR[i]));
-    Serial.print(" ");
+    //Serial.print(digitalRead(LINE_SENSOR[i]));
+    //Serial.print(" ");
     if (digitalRead(LINE_SENSOR[i])== 1) {
       if (firstSeen == 9) {
         firstSeen = i;
@@ -106,22 +107,19 @@ void readSensors(){
       amountSeen++;
     }
   }
-  Serial.print(" | ");
+  /*Serial.print(" | ");
   Serial.print(firstSeen);
   Serial.print(" ");
   Serial.print(lastSeen);
   Serial.print(" ");
-  Serial.println(amountSeen);
+  Serial.println(amountSeen);*/
 }
 
 
 // Set servos and motors to their initial positions and speeds.
 void resetRobot() {
-  leftScoop.write(L_SCOOP_UP);
-  rightScoop.write(R_SCOOP_UP);
+  returnScoopers();
   dumper.write(DUMP_DOWN);
-  rightDispenser.write(R_DISPENSER_IN);
-  leftDispenser.write(L_DISPENSER_IN);
 
   digitalWrite(WHEEL_DIR_LF, LOW);
   digitalWrite(WHEEL_DIR_LB, LOW);
@@ -132,37 +130,11 @@ void resetRobot() {
   digitalWrite(WHEEL_STBY, HIGH);
 }
 
-bool scoopL(){
-  int startTime = millis();
-  leftScoop.write(L_SCOOP_DOWN);
-  //wait before bringing the scoop back up
-  while(millis()-startTime < 500){}
+void returnScoopers(){
   leftScoop.write(L_SCOOP_UP);
-  return true;
-}
-bool scoopR(){
-  int startTime = millis();
-  rightScoop.write(R_SCOOP_DOWN);
-  //wait before bringing the scoop back up
-  while(millis()-startTime < 500){}
   rightScoop.write(R_SCOOP_UP);
-  return true;
-}
-bool dispenseL(){
-  int startTime = millis();
-  leftDispenser.write(L_DISPENSER_OUT);
-  //wait before bringing the scoop back up
-  while(millis()-startTime < 210){}
-  leftDispenser.write(L_DISPENSER_IN);
-  return true;
-}
-bool dispenseR(){
-  int startTime = millis();
-  rightDispenser.write(R_DISPENSER_OUT);
-  //wait before bringing the scoop back up
-  while(millis()-startTime < 210){}
   rightDispenser.write(R_DISPENSER_IN);
-  return true;
+  leftDispenser.write(L_DISPENSER_IN);
 }
 
 // Starting state; makes sure the robot is reset.
@@ -172,7 +144,7 @@ bool start() {
   }
   else {
     resetRobot();
-    pv=val_R_BARREL_SENSOR;
+    pv=val_L_BARREL_SENSOR;
     return false;
   }
 }
@@ -230,7 +202,7 @@ bool farWallFollow() {
     return true;
   }
 
-  driveBesideWall(780,180);
+  driveBesideWall(750,150);
   return false;
 }
 
@@ -256,7 +228,7 @@ bool wallFollowPastRocks() {
 
   // Rock, no rock, rock, no rock -> 4 status changes -> we move to the next
   // state.
-  if (statusChangeCount == 4) {
+  if (statusChangeCount == 3) {
     // Reset static variables for possible next time.
     rockSensorStatus = false;
     statusChangeCount = 0;
@@ -269,7 +241,7 @@ bool wallFollowPastRocks() {
 
 bool turnToFindLine() {
   leftDrive(0);
-  rightDrive(90);
+  rightDrive(100);
   if (digitalRead(LINE_SENSOR[7]) == 1) {
     return true;
   }
@@ -296,7 +268,7 @@ bool clearCorner() {
 
 bool lineUpForLineFollow() {
 
-  leftDrive(90);
+  leftDrive(100);
   rightDrive(0);
   pv=digitalRead(LINE_SENSOR[3]);
   if (digitalRead(LINE_SENSOR[3]) == 1) {
@@ -311,8 +283,18 @@ void lineFollow(){
 
     leftDrive(FOLLOW_SPEED_L[firstSeen]);
     rightDrive(FOLLOW_SPEED_R[firstSeen]);
-    /*Serial3.print("HELLO ");
-    Serial3.print(firstSeen);
+    /*Serial3.print(firstSeen);
+    Serial3.print(" ");
+    Serial3.print(FOLLOW_SPEED_L[firstSeen]);
+    Serial3.print(" ");
+    Serial3.println(FOLLOW_SPEED_R[firstSeen]);*/
+}
+
+void lineFollowOffset(){
+
+    leftDrive(FOLLOW_OFFSET_L[firstSeen]);
+    rightDrive(FOLLOW_OFFSET_R[firstSeen]);
+    /*Serial3.print(firstSeen);
     Serial3.print(" ");
     Serial3.print(FOLLOW_SPEED_L[firstSeen]);
     Serial3.print(" ");
@@ -320,16 +302,36 @@ void lineFollow(){
 }
 
 bool lineFollowToBarrel(){
-
   //line follow to the barrel
   lineFollow();
-
-  if (analogRead(R_BARREL_SENSOR) < 200) {
+  pv = analogRead(R_BARREL_SENSOR);
+  if (analogRead(R_BARREL_SENSOR) < 400) {
     return true;
-  }
-  
+  } 
   return false;
 }
+
+bool lineFollowTillSeeLeftBarrel(){
+  //line follow to the barrel
+  returnScoopers();
+  lineFollowOffset();
+  pv = analogRead(L_BARREL_SENSOR);
+  if (analogRead(L_BARREL_SENSOR) < 900) {
+    return true;
+  } 
+  return false;
+}
+
+bool lineFollowToCorner(){
+  //line follow to the barrel
+  returnScoopers();
+  lineFollow();
+  if (amountSeen == 0) {
+    return true;
+  } 
+  return false;
+}
+
 
 bool scoopBarrel1(){
   int startTime=millis();
@@ -337,6 +339,15 @@ bool scoopBarrel1(){
   lineFollow();
   rightDispenser.write(R_DISPENSER_OUT);
   rightScoop.write(R_SCOOP_DOWN);
+  while(millis()-startTime < 500){}
+  return true;
+}
+
+bool scoopBarrel2(){
+  int startTime=millis();
+  //line follow
+  lineFollow();
+  leftScoop.write(L_SCOOP_DOWN);
   while(millis()-startTime < 500){}
   return true;
 }
@@ -399,7 +410,7 @@ void setup(){
   digitalWrite(LEDG, HIGH);
 
   Serial.begin(115200);
-  Serial3.begin(9600);
+  Serial3.begin(115200);
   Serial3.write("hello bt");
 }
 
@@ -417,23 +428,32 @@ void loop() {
   // reset the robot then using the power switch.
   if (digitalRead(BUTTON2) == LOW) state = 0;
 
-  /*Serial3.print(state);
-  Serial3.print(" - ");
-  Serial3.println(pv);*/
-
+  if(p==0){
+    Serial3.print(state);
+    Serial3.print(" - ");
+    Serial3.println(pv);
+  }
+  p++;
+  if(p==1000){
+    p=0;
+  }
+    
   // State succession
   switch (state) {
-    case 0: if (start()) state++; break;
-    case 1: if (initialTurn()) state++; break;
-    case 2: if (wallFind()) state++; break;
-    case 3: if (farWallFollow()) state++; break;
-    case 4: if (wallFollowPastRocks()) state++; break;
-    case 5: if (turnToFindLine()) state++; break;
-    case 6: if (clearCorner()) state++; break;
-    case 7: if (lineUpForLineFollow()) state++; break;
-    case 8: if (lineFollowToBarrel()) state++; break;
-    case 9: if (scoopBarrel1()) state++; break;
-    case 10: if (stop()) state++; break;
-    default: state = 0;
-  }
+    case 0:   if (start()) state++; break;
+    case 1:   if (initialTurn()) state++; break;
+    case 2:   if (wallFind()) state++; break;
+    case 3:   if (farWallFollow()) state++; break;
+    case 4:   if (wallFollowPastRocks()) state++; break;
+    case 5:   if (turnToFindLine()) state++; break;
+    case 6:   if (clearCorner()) state++; break;
+    case 7:   if (lineUpForLineFollow()) state++; break;
+    case 8:   if (lineFollowToBarrel()) state++; break;
+    case 9:   if (scoopBarrel1()) state++; break;
+    case 10:  if (lineFollowTillSeeLeftBarrel()) state++; break;
+    case 11:  if (scoopBarrel2()) state++; break;
+    case 12:  if (lineFollowToCorner()) state++; break;
+    case 13:  if (stop()) state++; break;
+    default:  state = 0;
+  } 
 }
