@@ -126,27 +126,33 @@ void driveBesideWall(int targetDistance, int theSpeed) {
   rightDrive(baseSpeed - speedDiff);
 }
 
-// Follow the wall at a somewhat far distance for 2.5 seconds; this allows the
-// robot to come parallel to the wall without danger of colliding into the
-// wall.
-bool farWallFollow() {
-
+// Helper function for delay based states. The first call per state is the only
+// one that notices the milliseconds parameter.
+bool delayState(int milliseconds) {
   static int startTime = -1;
+  static int timeLimit = 0;
 
   if (startTime == -1) {
     startTime = millis();
+    timeLimit = milliseconds;
   }
 
   int timeDiff = millis() - startTime;
   printVal = timeDiff;
 
-  if (timeDiff > 1000) {
+  if (timeDiff > milliseconds) {
     startTime = -1;
     return true;
   }
-
-  driveBesideWall(750,150);
   return false;
+}
+
+// Follow the wall at a somewhat far distance for 1000 milliseconds; this allows the
+// robot to come parallel to the wall without danger of colliding into the
+// wall.
+bool farWallFollow() {
+  driveBesideWall(750,150);
+  return delayState(1000);
 }
 
 // Wall follow past the two first rocks. This state follows the wall closer
@@ -191,24 +197,9 @@ bool turnToFindLine() {
 }
 
 bool clearCorner() {
-  static int startTime = -1;
-
   leftDrive(90);
   rightDrive(90);
-
-  if (startTime == -1) {
-    startTime = millis();
-  }
-
-  int timeDiff = millis() - startTime;
-  printVal = timeDiff;
-
-  if (timeDiff > 300) {
-    startTime = -1;
-    return true;
-  }
-
-  return false;
+  return delayState(300);
 }
 
 bool lineUpForLineFollow() {
@@ -247,25 +238,14 @@ void leftOffsetLineFollow(){
 }
 
 bool scoopRight1DeliverRight1(){
-  static int startTime = -1;
   rightOffsetLineFollow();
-  if (startTime == -1) {
-    startTime = millis();
-  }
-
-  int timeDiff = millis() - startTime;
-  printVal = timeDiff;
-  if (timeDiff > 1300) {
-    startTime = -1;
-    return true;
-  }
 
   printVal = rightBarrelSensorValue;
   if (rightBarrelSensorValue < 500) {
     rightDispenser.write(R_DISPENSER_KICK);
     rightScoop.write(R_SCOOP_DOWN);
   } 
-  return false;
+  return delayState(1300);
 }
 
 bool scoopLeft1ResetRightServos() {
@@ -369,33 +349,20 @@ bool lineUpForRightScoop3() {
   rightDrive(0);
 
   printVal = rightWallSensorValue;
-  if (rightWallSensorValue > 500) {
+  if (rightWallSensorValue > 400) {
     return true;
   }
   return false;
 }
 
 bool passCornerScoopRight3DeliverRight3() {
-  static int startTime = -1;
-
   leftDrive(100);
   rightDrive(100);
-
-  if (startTime == -1) {
-    startTime = millis();
-  }
-
+  
   if (rightBarrelSensorValue < 700) {
     rightScoop.write(R_SCOOP_DOWN);
-    rightDispenser.write(R_DISPENSER_KICK);
   }
-
-
-  if (millis() - startTime > 500) {
-    startTime = -1;
-    return true;
-  }
-  return false;
+  return delayState(500);
 }
 
 bool skimSouthWall() {
@@ -438,20 +405,9 @@ bool scoopLeft2DeliverLeft2() {
 }
 
 bool allowLeftBarrelEjection2() {
-  static int startTime = -1;
+  // Make line following go slower.
   leftOffsetLineFollow();
-
-  if (startTime == -1) {
-    startTime = millis();
-  }
-
-  int diffTime = millis() - startTime;
-  printVal = diffTime;
-  if (diffTime > 300) {
-    return true;
-    startTime = -1;
-  }
-  return false;
+  return delayState(300);
 }
 
 bool lineFollowToIsland() {
