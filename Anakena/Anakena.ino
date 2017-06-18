@@ -434,6 +434,7 @@ bool findSouthLine() {
   leftDrive(0);
   rightDrive(100);
 
+  printVal = lastSeen;
   if (lastSeen != -1) {
     leftScoop.write(L_SCOOP_UP);
     leftDispenser.write(L_DISPENSER_WIND_UP);
@@ -445,11 +446,13 @@ bool findSouthLine() {
 bool scoopLeft2DeliverLeft2() {
   leftOffsetLineFollow();
   
+  printVal = val_BACK_SENSOR;
   if (val_BACK_SENSOR < 700) {
     leftScoop.write(L_SCOOP_DOWN);
     leftDispenser.write(L_DISPENSER_KICK);
     return true;
   }
+  return false;
 }
 
 bool allowLeftBarrelEjection2() {
@@ -460,7 +463,9 @@ bool allowLeftBarrelEjection2() {
     startTime = millis();
   }
 
-  if (millis() - startTime > 300) {
+  int diffTime = millis() - startTime;
+  printVal = diffTime;
+  if (diffTime > 300) {
     return true;
   }
   return false;
@@ -537,21 +542,12 @@ void breakpoint() {
 void loop() {
 
   static int state = 0;
+  static int lastState = 0;
   readSensors();
 
   // Button 2 resets the state machine. This is useful as a less violent way to
   // reset the robot then using the power switch.
   if (digitalRead(BUTTON2) == LOW) state = 0;
-
-  if(iterationCount == 0){
-    Serial3.print(state);
-    Serial3.print(" - ");
-    Serial3.println(printVal);
-  }
-  iterationCount++;
-  if(iterationCount == 1000){
-    iterationCount = 0;
-  }
     
   // State succession
   switch (state) {
@@ -621,4 +617,12 @@ void loop() {
     case 23: if (stop()) state++; break;
     default: break;
   } 
+
+  if(iterationCount % 1000 == 0 || lastState != state){
+    Serial3.print(state);
+    Serial3.print(" - ");
+    Serial3.println(printVal);
+    lastState = state;
+  }
+  iterationCount++;
 }
