@@ -5,10 +5,10 @@
 // Servos
 Servo leftScoop, rightScoop, rightDispenser, leftDispenser, dumper;
 int printVal;
-int val_R_WALL_SENSOR;
-int val_R_BARREL_SENSOR;
-int val_L_BARREL_SENSOR;
-int val_BACK_SENSOR;
+int rightWallSensorValue;
+int rightBarrelSensorValue;
+int leftBarrelSensorValue;
+int backSensorValue;
 int firstSeen = -1;
 int lastSeen = -1;
 int amountSeen = 0;
@@ -53,10 +53,10 @@ void rightDrive(int speed) {
 
 void readSensors(){
 
-  val_R_WALL_SENSOR =   analogRead(R_WALL_SENSOR);
-  val_R_BARREL_SENSOR = analogRead(R_BARREL_SENSOR);
-  val_L_BARREL_SENSOR = analogRead(L_BARREL_SENSOR);
-  val_BACK_SENSOR =     analogRead(BACK_SENSOR);
+  rightWallSensorValue =   analogRead(R_WALL_SENSOR);
+  rightBarrelSensorValue = analogRead(R_BARREL_SENSOR);
+  leftBarrelSensorValue = analogRead(L_BARREL_SENSOR);
+  backSensorValue =     analogRead(BACK_SENSOR);
 
   // Calculate the first and last sensors which see the line.
   firstSeen = -1;
@@ -98,7 +98,7 @@ bool start() {
   }
   else {
     resetRobot();
-    printVal=val_R_WALL_SENSOR;
+    printVal=rightWallSensorValue;
     return false;
   }
 }
@@ -107,8 +107,8 @@ bool start() {
 bool findNorthWall() {
   leftDrive(90);
   rightDrive(90);
-  printVal = val_R_WALL_SENSOR;
-  if (val_R_WALL_SENSOR < 780) {
+  printVal = rightWallSensorValue;
+  if (rightWallSensorValue < 780) {
     return true;
   }
   return false;
@@ -117,7 +117,7 @@ bool findNorthWall() {
 // Helper function for a couple of states. Wall follows at a specified distance
 // from the wall.
 void driveBesideWall(int targetDistance, int theSpeed) {
-  int wallSensor = val_R_WALL_SENSOR;
+  int wallSensor = rightWallSensorValue;
   int offset = wallSensor - targetDistance;
   int baseSpeed = theSpeed;
   int speedDiff = offset / (theSpeed/12);
@@ -160,8 +160,8 @@ bool wallFollowPastRocks() {
   static int statusChangeCount = 0;
   
   // If the status of the sensor has changed, increment the count.
-  if ((val_BACK_SENSOR < 920 && !rockSensorStatus) || 
-      (val_BACK_SENSOR > 940 && rockSensorStatus)) {
+  if ((backSensorValue < 920 && !rockSensorStatus) || 
+      (backSensorValue > 940 && rockSensorStatus)) {
     statusChangeCount++;
     rockSensorStatus = !rockSensorStatus;
   }
@@ -300,8 +300,8 @@ bool lineFollowTillNoLine(){
 
 bool wallFollowScoopRight2() {
   driveBesideWall(500, 100);
-  printVal = val_R_BARREL_SENSOR;
-  if (val_R_BARREL_SENSOR < 700) {
+  printVal = rightBarrelSensorValue;
+  if (rightBarrelSensorValue < 700) {
     rightScoop.write(R_SCOOP_DOWN);
     return true;
   }
@@ -310,8 +310,8 @@ bool wallFollowScoopRight2() {
 
 bool wallFollowToBackWall() {
   driveBesideWall(500, 100);
-  printVal = val_R_WALL_SENSOR;
-  if (val_R_WALL_SENSOR < 200) {
+  printVal = rightWallSensorValue;
+  if (rightWallSensorValue < 200) {
     return true;
   }
   return false;
@@ -321,8 +321,8 @@ bool turnBackwardDeliverRight2() {
   leftDrive(-100);
   rightDrive(0);
 
-  printVal = val_R_WALL_SENSOR;
-  if (val_R_WALL_SENSOR > 350) {
+  printVal = rightWallSensorValue;
+  if (rightWallSensorValue > 350) {
     rightDispenser.write(R_DISPENSER_KICK);
     return true;
   }
@@ -333,8 +333,8 @@ bool turnAwayFromWall() {
   leftDrive(-100);
   rightDrive(0);
 
-  printVal = val_R_WALL_SENSOR;
-  if (val_R_WALL_SENSOR > 800) {
+  printVal = rightWallSensorValue;
+  if (rightWallSensorValue > 800) {
     return true;
   }
   return false;
@@ -342,8 +342,8 @@ bool turnAwayFromWall() {
 
 bool wallFollowDeliverLeft1() {
   driveBesideWall(700, 100);
-  printVal = val_BACK_SENSOR;
-  if (val_BACK_SENSOR < 400) {
+  printVal = backSensorValue;
+  if (backSensorValue < 400) {
     leftDispenser.write(L_DISPENSER_KICK);
     rightScoop.write(R_SCOOP_UP);
     rightDispenser.write(R_DISPENSER_WIND_UP);
@@ -354,8 +354,8 @@ bool wallFollowDeliverLeft1() {
 
 bool wallFollowToCorner() {
   driveBesideWall(700, 100);
-  printVal = val_R_WALL_SENSOR;
-  if (val_R_WALL_SENSOR < 230) {
+  printVal = rightWallSensorValue;
+  if (rightWallSensorValue < 230) {
     return true;
   }
   return false;
@@ -365,8 +365,8 @@ bool lineUpForRightScoop3() {
   leftDrive(-100);
   rightDrive(0);
 
-  printVal = val_R_WALL_SENSOR;
-  if (val_R_WALL_SENSOR > 500) {
+  printVal = rightWallSensorValue;
+  if (rightWallSensorValue > 500) {
     return true;
   }
   return false;
@@ -382,7 +382,7 @@ bool passCornerScoopRight3DeliverRight3() {
     startTime = millis();
   }
 
-  if (val_R_BARREL_SENSOR < 700) {
+  if (rightBarrelSensorValue < 700) {
     rightScoop.write(R_SCOOP_DOWN);
     rightDispenser.write(R_DISPENSER_KICK);
   }
@@ -398,8 +398,8 @@ bool skimSouthWall() {
   leftDrive(100);
   rightDrive(100);
 
-  printVal = val_R_WALL_SENSOR;
-  if (val_R_WALL_SENSOR < 700) {
+  printVal = rightWallSensorValue;
+  if (rightWallSensorValue < 700) {
     return true;
   }
   return false;
@@ -421,8 +421,8 @@ bool findSouthLine() {
 bool scoopLeft2DeliverLeft2() {
   leftOffsetLineFollow();
   
-  printVal = val_BACK_SENSOR;
-  if (val_BACK_SENSOR < 700) {
+  printVal = backSensorValue;
+  if (backSensorValue < 700) {
     leftScoop.write(L_SCOOP_DOWN);
     leftDispenser.write(L_DISPENSER_KICK);
     rightScoop.write(R_SCOOP_UP);
@@ -453,8 +453,8 @@ bool allowLeftBarrelEjection2() {
 bool scoopRight4DeliverRight4() {
   rightOffsetLineFollow();
 
-  printVal = val_R_BARREL_SENSOR;
-  if (val_R_BARREL_SENSOR < 500) {
+  printVal = rightBarrelSensorValue;
+  if (rightBarrelSensorValue < 500) {
     rightScoop.write(R_SCOOP_DOWN);
     rightDispenser.write(R_DISPENSER_KICK);
     leftScoop.write(L_SCOOP_UP);
@@ -466,8 +466,8 @@ bool scoopRight4DeliverRight4() {
 bool allowRightBarrelEjection4() {
   rightOffsetLineFollow();
 
-  printVal = val_R_WALL_SENSOR;
-  if (val_R_WALL_SENSOR > 800) {
+  printVal = rightWallSensorValue;
+  if (rightWallSensorValue > 800) {
     return true;
   }
   return false;
@@ -498,20 +498,20 @@ bool wigglePart3() {
 bool hugCorner() {
   leftDrive(50);
   rightDrive(0);
-  printVal = val_R_WALL_SENSOR;
-  return val_R_WALL_SENSOR < 600;
+  printVal = rightWallSensorValue;
+  return rightWallSensorValue < 600;
 }
 
 bool findSouthWall() {
   leftDrive(80);
   rightDrive(80);
-  printVal = val_R_WALL_SENSOR;
-  return val_R_WALL_SENSOR < 250;
+  printVal = rightWallSensorValue;
+  return rightWallSensorValue < 250;
 }
 
 bool smearWall() {
   driveBesideWall(250, 50);
-  printVal = val_R_WALL_SENSOR;
+  printVal = rightWallSensorValue;
   return false;
 }
 
