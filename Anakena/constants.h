@@ -12,10 +12,10 @@ const int DUMP_DOWN = 100;
 const int DUMP_UP   = 140;
 
 // Dispenser angles
-const int R_DISPENSER_OUT = 1;
-const int R_DISPENSER_IN = 22;
-const int L_DISPENSER_OUT = 1;
-const int L_DISPENSER_IN = 20;
+const int R_DISPENSER_WIND_UP = 22;
+const int R_DISPENSER_KICK = 1;
+const int L_DISPENSER_WIND_UP = 1;
+const int L_DISPENSER_KICK = 20;
 
 // Speeds for line following
 int RIGHT_OFFSET_FOLLOW_SPEEDS_R[] = 
