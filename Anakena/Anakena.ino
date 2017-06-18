@@ -322,7 +322,7 @@ bool turnBackwardDeliverRight2() {
   rightDrive(0);
 
   printVal = val_R_WALL_SENSOR;
-  if (val_R_WALL_SENSOR > 200) {
+  if (val_R_WALL_SENSOR > 350) {
     rightDispenser.write(R_DISPENSER_KICK);
     return true;
   }
@@ -394,32 +394,7 @@ bool passCornerScoopRight3DeliverRight3() {
   return false;
 }
 
-bool enterTapeCorner() {
-  leftDrive(100);
-  rightDrive(100);
-
-  printVal = lastSeen;
-  if (lastSeen != -1) {
-    return true;
-  }
-  return false;
-}
-
-bool leaveTapeCorner() {
-  leftDrive(100);
-  rightDrive(100);
-
-  if (val_R_BARREL_SENSOR < 700) {
-    rightScoop.write(R_SCOOP_DOWN);
-  }
-
-  printVal = lastSeen;
-  if (lastSeen == -1) {
-    return true;
-  }
-}
-
-bool findSouthWall() {
+bool skimSouthWall() {
   leftDrive(100);
   rightDrive(100);
 
@@ -450,6 +425,9 @@ bool scoopLeft2DeliverLeft2() {
   if (val_BACK_SENSOR < 700) {
     leftScoop.write(L_SCOOP_DOWN);
     leftDispenser.write(L_DISPENSER_KICK);
+    rightScoop.write(R_SCOOP_UP);
+    rightDispenser.write(R_DISPENSER_WIND_UP);
+
     return true;
   }
   return false;
@@ -467,7 +445,73 @@ bool allowLeftBarrelEjection2() {
   printVal = diffTime;
   if (diffTime > 300) {
     return true;
+    startTime = -1;
   }
+  return false;
+}
+
+bool scoopRight4DeliverRight4() {
+  rightOffsetLineFollow();
+
+  printVal = val_R_BARREL_SENSOR;
+  if (val_R_BARREL_SENSOR < 500) {
+    rightScoop.write(R_SCOOP_DOWN);
+    rightDispenser.write(R_DISPENSER_KICK);
+    leftScoop.write(L_SCOOP_UP);
+    return true;
+  }
+  return false;
+}
+
+bool allowRightBarrelEjection4() {
+  rightOffsetLineFollow();
+
+  printVal = val_R_WALL_SENSOR;
+  if (val_R_WALL_SENSOR > 800) {
+    return true;
+  }
+  return false;
+  
+}
+
+bool wigglePart1() {
+  leftDrive(0);
+  rightDrive(50);
+  printVal = lastSeen;
+  return lastSeen == -1;
+}
+
+bool wigglePart2() {
+  leftDrive(50);
+  rightDrive(0);
+  printVal = lastSeen;
+  return lastSeen == 0;
+}
+
+bool wigglePart3() {
+  leftDrive(0);
+  rightDrive(50);
+  printVal = lastSeen;
+  return lastSeen == 7;
+}
+
+bool hugCorner() {
+  leftDrive(50);
+  rightDrive(0);
+  printVal = val_R_WALL_SENSOR;
+  return val_R_WALL_SENSOR < 600;
+}
+
+bool findSouthWall() {
+  leftDrive(80);
+  rightDrive(80);
+  printVal = val_R_WALL_SENSOR;
+  return val_R_WALL_SENSOR < 250;
+}
+
+bool smearWall() {
+  driveBesideWall(250, 50);
+  printVal = val_R_WALL_SENSOR;
   return false;
 }
 
@@ -610,11 +654,19 @@ void loop() {
     case 16: if (wallFollowToCorner()) state++; break;
     case 17: if (lineUpForRightScoop3()) state++; break;
     case 18: if (passCornerScoopRight3DeliverRight3()) state++; break;
-    case 19: if (findSouthWall()) state++; break;
+    case 19: if (skimSouthWall()) state++; break;
     case 20: if (findSouthLine()) state++; break;
     case 21: if (scoopLeft2DeliverLeft2()) state++; break;
     case 22: if (allowLeftBarrelEjection2()) state++; break;
-    case 23: if (stop()) state++; break;
+    case 23: if (scoopRight4DeliverRight4()) state++; break;
+    case 24: if (allowRightBarrelEjection4()) state++; break;
+    case 25: if (wigglePart1()) state++; break;
+    case 26: if (wigglePart2()) state++; break;
+    case 27: if (wigglePart3()) state++; break;
+    case 28: if (hugCorner()) state++; break;
+    case 29: if (findSouthWall()) state++; break;
+    case 30: if (smearWall()) state++; break;
+    case 31: if (stop()) state++; break;
     default: break;
   } 
 
