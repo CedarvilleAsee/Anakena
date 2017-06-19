@@ -439,7 +439,7 @@ bool alignWithSouthLine() {
 }
 
 bool scoopLeft2DeliverLeft2() {
-  strongLineFollow(7, 20);
+  strongLineFollow(6, 20);
   
   printVal = backSensorValue;
   if (backSensorValue < 700) {
