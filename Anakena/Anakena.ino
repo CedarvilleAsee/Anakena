@@ -206,8 +206,8 @@ bool lineUpForLineFollow() {
 
   leftDrive(100);
   rightDrive(0);
-  printVal = digitalRead(LINE_SENSOR[3]);
-  if (digitalRead(LINE_SENSOR[3]) == 1) {
+  printVal = rightWallSensorValue;
+  if (rightWallSensorValue < 500) {
     return true;
   }
   return false;
@@ -271,12 +271,20 @@ void leftOffsetLineFollow(){
 bool scoopRight1DeliverRight1(){
   weakLineFollow(3, 20);
 
-  printVal = rightBarrelSensorValue;
-  if (rightBarrelSensorValue < 500) {
+
+  if (rightWallSensorValue > 800) {
     rightDispenser.write(R_DISPENSER_KICK);
+  }
+
+  if (rightBarrelSensorValue < 500) {
     rightScoop.write(R_SCOOP_DOWN);
   } 
-  return delayState(1000);
+  if (delayState(1000)) {
+    printVal = rightWallSensorValue;
+    return true;
+  }
+  printVal = rightWallSensorValue;
+  return false;
 }
 
 bool scoopLeft1ResetRightServos() {
@@ -374,7 +382,23 @@ bool lineUpForRightScoop3() {
   return false;
 }
 
-bool passCornerScoopRight3DeliverRight3() {
+bool passCornerDeliverRight3() {
+  leftDrive(100);
+  rightDrive(100);
+
+  if (rightBarrelSensorValue < 700) {
+    rightScoop.write(R_SCOOP_DOWN);
+    rightDispenser.write(R_DISPENSER_KICK);
+  }
+
+  if (delayState(350)) {
+    rightDispenser.write(R_DISPENSER_KICK);
+    return true;
+  }
+  return false;
+}
+
+bool passCornerScoopRight3() {
   leftDrive(100);
   rightDrive(100);
   
@@ -382,7 +406,7 @@ bool passCornerScoopRight3DeliverRight3() {
     rightScoop.write(R_SCOOP_DOWN);
     rightDispenser.write(R_DISPENSER_KICK);
   }
-  return delayState(500);
+  return delayState(150);
 }
 
 bool skimSouthWall() {
@@ -415,7 +439,7 @@ bool alignWithSouthLine() {
 }
 
 bool scoopLeft2DeliverLeft2() {
-  strongLineFollow(6, 20);
+  strongLineFollow(7, 20);
   
   printVal = backSensorValue;
   if (backSensorValue < 700) {
@@ -480,7 +504,10 @@ bool wigglePart2DeliverRight4() {
   leftDrive(60);
   rightDrive(0);
   printVal = lastSeen;
-  rightDispenser.write(R_DISPENSER_KICK);
+  if (lastSeen == 2) {
+    rightDispenser.write(R_DISPENSER_KICK);
+  }
+
   return lastSeen == 0;
 }
 
@@ -637,21 +664,22 @@ void loop() {
 
     case 13: if (wallFollowToCorner()) state++; break;
     case 14: if (lineUpForRightScoop3()) state++; break;
-    case 15: if (passCornerScoopRight3DeliverRight3()) state++; break;
-    case 16: if (skimSouthWall()) state++; break;
-    case 17: if (findSouthLine()) state++; break;
-    case 18: if (alignWithSouthLine()) state++; break;
-    case 19: if (scoopLeft2DeliverLeft2()) state++; break;
-    case 20: if (allowLeftBarrelEjection2()) state++; break;
-    case 21: if (lineFollowToIsland()) state++; break;
-    case 22: if (scoopRight4()) state++; break;
-    case 23: if (wigglePart1()) state++; break;
-    case 24: if (wigglePart2DeliverRight4()) state++; break;
-    case 25: if (wigglePart3()) state++; break;
-    case 26: if (hugCorner()) state++; break;
-    case 27: if (findSouthWall()) state++; break;
-    case 28: if (smearWall()) state++; break;
-    case 29: if (stop()) state++; break;
+    case 15: if (passCornerDeliverRight3()) state++; break;
+    case 16: if (passCornerScoopRight3()) state++; break;
+    case 17: if (skimSouthWall()) state++; break;
+    case 18: if (findSouthLine()) state++; break;
+    case 19: if (alignWithSouthLine()) state++; break;
+    case 20: if (scoopLeft2DeliverLeft2()) state++; break;
+    case 21: if (allowLeftBarrelEjection2()) state++; break;
+    case 22: if (lineFollowToIsland()) state++; break;
+    case 23: if (scoopRight4()) state++; break;
+    case 24: if (wigglePart1()) state++; break;
+    case 25: if (wigglePart2DeliverRight4()) state++; break;
+    case 26: if (wigglePart3()) state++; break;
+    case 27: if (hugCorner()) state++; break;
+    case 28: if (findSouthWall()) state++; break;
+    case 29: if (smearWall()) state++; break;
+    case 30: if (stop()) state++; break;
     default: break;
   } 
 
