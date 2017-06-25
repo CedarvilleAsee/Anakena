@@ -8,6 +8,7 @@ int printVal;
 int rightWallSensorValue; 
 int rightBarrelSensorValue; 
 int leftBarrelSensorValue; 
+int longSensorValue;
 int backSensorValue; 
 int firstSeen = -1; 
 int lastSeen = -1;
@@ -16,9 +17,9 @@ int iterationCount = 0;
 
 // Drives the left wheel at a specified speed.
 void leftDrive(int speed) {
-  // Check the sign of the speed. If the speed is negative, we drive the
-  // wheel
-  // backward.
+  if (speed > 254) speed = 254;
+  if (speed < -254) speed = -254;
+
   if (speed >= 0) {
     // HIGH-LOW combination drives wheel forward.
     digitalWrite(WHEEL_DIR_LF, HIGH);
@@ -35,8 +36,9 @@ void leftDrive(int speed) {
 
 // Drives the right wheel at the specified speed.
 void rightDrive(int speed) {
-  // Check the sign of the speed. If the speed is negative, we drive the wheel
-  // backward.
+  if (speed > 254) speed = 254;
+  if (speed < -254) speed = -254;
+
   if (speed >= 0) {
     // HIGH-LOW combination drives wheel forward.
     digitalWrite(WHEEL_DIR_RF, HIGH);
@@ -57,6 +59,7 @@ void readSensors(){
   rightBarrelSensorValue = analogRead(R_BARREL_SENSOR);
   leftBarrelSensorValue = analogRead(L_BARREL_SENSOR);
   backSensorValue =     analogRead(BACK_SENSOR);
+  longSensorValue = analogRead(LONG_SENSOR);
 
   // Calculate the first and last sensors which see the line.
   firstSeen = -1;
@@ -75,8 +78,8 @@ void readSensors(){
 
 // Set servos and motors to their initial positions and speeds.
 void resetRobot() {
-  leftScoop.write(L_SCOOP_UP);
-  rightScoop.write(R_SCOOP_UP);
+  leftScoop.write(L_SCOOP_DOWN);
+  rightScoop.write(R_SCOOP_DOWN);
   rightDispenser.write(R_DISPENSER_WIND_UP);
   leftDispenser.write(L_DISPENSER_KICK);
   dumper.write(DUMP_DOWN);
@@ -98,15 +101,17 @@ bool start() {
   }
   else {
     resetRobot();
-    printVal=rightWallSensorValue;
+    printVal = longSensorValue;
     return false;
   }
 }
 
 // Travel straight until the sees the wall at a reasonable distance away.
 bool findNorthWall() {
-  leftDrive(90);
-  rightDrive(90);
+  leftDrive(140);
+  rightDrive(140);
+  leftScoop.write(L_SCOOP_UP);
+  rightScoop.write(R_SCOOP_UP);
   printVal = rightWallSensorValue;
   if (rightWallSensorValue < 780) {
     return true;
@@ -116,14 +121,71 @@ bool findNorthWall() {
 
 // Helper function for a couple of states. Wall follows at a specified distance
 // from the wall.
-void driveBesideWall(int targetDistance, int theSpeed) {
+void driveBesideWall(int targetDistance, int baseSpeed, int sensitivity) {
   int wallSensor = rightWallSensorValue;
   int offset = wallSensor - targetDistance;
-  int baseSpeed = theSpeed;
-  int speedDiff = offset / (theSpeed/12);
+  int speedDiff = offset * sensitivity / 20;
 
   leftDrive(baseSpeed + speedDiff);
   rightDrive(baseSpeed - speedDiff);
+}
+
+void weakLineFollow(int targetLastSeen, int sensitivity, int baseSpeed = 100) {
+  int offset = 0;
+  if (targetLastSeen == 7 && lastSeen == -1) {
+    offset = -2;
+  }
+  else if (lastSeen != -1) {
+    offset = targetLastSeen - lastSeen;
+  }
+  int speedDiff = offset * sensitivity;
+  leftDrive(baseSpeed - speedDiff);
+  rightDrive(baseSpeed + speedDiff);
+}
+
+void strongLineFollow(int targetLastSeen, int sensitivity, int baseSpeed) {
+
+  static bool isRightSide = lastSeen > 3;
+  int offset = 0;
+  
+  if (lastSeen == -1) {
+    if (targetLastSeen == 7 || isRightSide) {
+      offset = -2;
+    }
+    else {
+      offset = 2;
+    }
+  }
+  else {
+    offset = targetLastSeen - lastSeen;
+    isRightSide = lastSeen > 3;
+  }
+
+  int speedDiff = offset * sensitivity;
+
+  leftDrive(baseSpeed - speedDiff);
+  rightDrive(baseSpeed + speedDiff);
+}
+
+void leftLineFollow(int targetFirstSeen, 
+  int sensitivity, int baseSpeed = 100) {
+
+  static int previousFirstSeen = firstSeen;
+  int offset = 0;
+  
+  if (firstSeen != -1) {
+    offset = targetFirstSeen - firstSeen;
+    previousFirstSeen = firstSeen;
+  }
+  else {
+    offset = 0;
+  }
+
+  int speedDiff = offset * sensitivity;
+
+  leftDrive(baseSpeed - speedDiff);
+  rightDrive(baseSpeed + speedDiff);
+
 }
 
 // Helper function for delay based states. The first call per state is the only
@@ -151,7 +213,7 @@ bool delayState(int milliseconds) {
 // robot to come parallel to the wall without danger of colliding into the
 // wall.
 bool farWallFollow() {
-  driveBesideWall(750,150);
+  driveBesideWall(750, 220, 10);
   return delayState(1000);
 }
 
@@ -159,20 +221,18 @@ bool farWallFollow() {
 // than the previous state because we do not want to kick the rocks.
 bool wallFollowPastRocks() {
 
-  // Keep track of whether the sensor sees a rock.
   static bool rockSensorStatus = false;
-  
-  // Keep track of the times the sensor has changed whether it sees a rock.
   static int statusChangeCount = 0;
+
+  driveBesideWall(110, 250, 5);
   
   // If the status of the sensor has changed, increment the count.
-  if ((backSensorValue < 920 && !rockSensorStatus) || 
-      (backSensorValue > 940 && rockSensorStatus)) {
+  if ((backSensorValue < 700 && !rockSensorStatus) || 
+      (backSensorValue > 850 && rockSensorStatus)) {
     statusChangeCount++;
     rockSensorStatus = !rockSensorStatus;
   }
-
-  printVal = statusChangeCount;
+  printVal = backSensorValue;
   // Rock, no rock, rock -> 3 status changes -> we move to the next
   // state.
   if (statusChangeCount == 3) {
@@ -181,14 +241,12 @@ bool wallFollowPastRocks() {
     statusChangeCount = 0;
     return true;
   }
-
-  driveBesideWall(485,90);
   return false;
 }
 
 bool turnToFindLine() {
   leftDrive(0);
-  rightDrive(100);
+  rightDrive(200);
   printVal = lastSeen;
   if (digitalRead(LINE_SENSOR[7]) == 1) {
     return true;
@@ -197,106 +255,41 @@ bool turnToFindLine() {
 }
 
 bool clearCorner() {
-  leftDrive(90);
-  rightDrive(90);
-  return delayState(300);
+  leftDrive(180);
+  rightDrive(180);
+  return delayState(170);
 }
 
 bool lineUpForLineFollow() {
 
-  leftDrive(100);
+  leftDrive(180);
   rightDrive(0);
   printVal = rightWallSensorValue;
-  if (rightWallSensorValue < 500) {
+  if (lastSeen < 4 && lastSeen > 0) {
     return true;
   }
   return false;
-}
-
-void weakLineFollow(int targetLastSeen, int sensitivity, int baseSpeed = 100) {
-  int offset = 0;
-
-  if (lastSeen != -1) {
-    offset = targetLastSeen - lastSeen;
-  }
-
-  int speedDiff = offset * sensitivity;
-
-  leftDrive(baseSpeed - speedDiff);
-  rightDrive(baseSpeed + speedDiff);
-}
-
-void strongLineFollow(int targetLastSeen, int sensitivity, int baseSpeed = 100) {
-  static int previousLastSeen = lastSeen;
-  int offset = 0;
-  
-  if (lastSeen != -1) {
-    offset = targetLastSeen - lastSeen;
-    previousLastSeen = lastSeen;
-  }
-  else {
-    offset = targetLastSeen - previousLastSeen;
-  }
-
-  int speedDiff = offset * sensitivity;
-
-  leftDrive(baseSpeed - speedDiff);
-  rightDrive(baseSpeed + speedDiff);
-}
-
-// Method that only does line following. Since we will be using line following a lot, but have different exit conditions
-// we can simply call this method and leave the exit conditions to the individual states to deal with.
-void rightOffsetLineFollow(){
-  if (lastSeen == -1) {
-    leftDrive(75);
-    rightDrive(75);
-  }
-  else {
-    leftDrive(RIGHT_OFFSET_FOLLOW_SPEEDS_L[lastSeen]);
-    rightDrive(RIGHT_OFFSET_FOLLOW_SPEEDS_R[lastSeen]);
-  }
-}
-
-void leftOffsetLineFollow(){
-  if (lastSeen == -1) {
-    leftDrive(75);
-    rightDrive(75);
-  }
-  else {
-    leftDrive(LEFT_OFFSET_FOLLOW_SPEEDS_L[lastSeen]);
-    rightDrive(LEFT_OFFSET_FOLLOW_SPEEDS_R[lastSeen]);
-  }
 }
 
 bool scoopRight1DeliverRight1(){
-  weakLineFollow(3, 20);
-
-
+  weakLineFollow(2, 20, 140);
   if (rightWallSensorValue > 800) {
     rightDispenser.write(R_DISPENSER_KICK);
   }
-
   if (rightBarrelSensorValue < 500) {
+    rightDispenser.write(R_DISPENSER_KICK);
     rightScoop.write(R_SCOOP_DOWN);
   } 
-  if (delayState(1000)) {
-    printVal = rightWallSensorValue;
-    return true;
-  }
-  printVal = rightWallSensorValue;
-  return false;
+  return delayState(1000);
 }
 
 bool scoopLeft1ResetRightServos() {
   //line follow to the barrel
-  weakLineFollow(6, 5);
+  strongLineFollow(7, 30, 180);
   rightScoop.write(R_SCOOP_UP);
   printVal = leftBarrelSensorValue;
   if (leftBarrelSensorValue < 900) {
     leftScoop.write(L_SCOOP_DOWN);
-  }
-
-  if (lastSeen == -1) {
     leftDispenser.write(L_DISPENSER_WIND_UP);
     rightDispenser.write(R_DISPENSER_WIND_UP);
     return true;
@@ -305,34 +298,45 @@ bool scoopLeft1ResetRightServos() {
   return false;
 }
 
-bool wallFollowScoopRight2() {
-  driveBesideWall(550, 100);
+bool lineFollowToRight2() {
+  strongLineFollow(4, 30, 180);
   if (rightBarrelSensorValue < 700) {
     rightScoop.write(R_SCOOP_DOWN);
   }
 
   printVal = rightWallSensorValue;
-  if (rightWallSensorValue < 190) {
-    return true;
-  }
-  return false;
+  return amountSeen > 3;
 }
 
-bool wallFollowToBackWall() {
-  driveBesideWall(550, 100);
+bool findMartinique() {
+  leftDrive(180);
+  rightDrive(180);
+  if (rightBarrelSensorValue < 800) {
+    rightScoop.write(R_SCOOP_DOWN);
+  }
   printVal = rightWallSensorValue;
-  if (rightWallSensorValue < 170) {
+  return rightWallSensorValue < 300;
+}
+
+bool wallFollowScoopRight2() {
+  driveBesideWall(300, 180, 15);
+  if (rightBarrelSensorValue < 800) {
+    rightScoop.write(R_SCOOP_DOWN);
+  }
+
+  printVal = rightWallSensorValue;
+  if (rightWallSensorValue < 100 && backSensorValue > 500) {
     return true;
   }
   return false;
 }
 
 bool turnBackwardDeliverRight2() {
-  leftDrive(-100);
+  leftDrive(-180);
   rightDrive(0);
 
   printVal = rightWallSensorValue;
-  if (rightWallSensorValue > 350) {
+  if (rightWallSensorValue > 150) {
     rightDispenser.write(R_DISPENSER_KICK);
     return true;
   }
@@ -340,20 +344,20 @@ bool turnBackwardDeliverRight2() {
 }
 
 bool turnAwayFromWall() {
-  leftDrive(-100);
+  leftDrive(-180);
   rightDrive(0);
 
   printVal = rightWallSensorValue;
-  if (rightWallSensorValue > 800) {
+  if (rightWallSensorValue > 680) {
     return true;
   }
   return false;
 }
 
 bool wallFollowDeliverLeft1() {
-  driveBesideWall(700, 100);
+  driveBesideWall(450, 180, 10);
   printVal = backSensorValue;
-  if (backSensorValue < 400) {
+  if (backSensorValue < 80) {
     leftDispenser.write(L_DISPENSER_KICK);
     rightScoop.write(R_SCOOP_UP);
     rightDispenser.write(R_DISPENSER_WIND_UP);
@@ -363,35 +367,34 @@ bool wallFollowDeliverLeft1() {
 }
 
 bool wallFollowToCorner() {
-  driveBesideWall(700, 100);
+  driveBesideWall(450, 160, 10);
   printVal = rightWallSensorValue;
-  if (rightWallSensorValue < 230) {
+  if (rightWallSensorValue < 170) {
     return true;
   }
   return false;
 }
 
 bool lineUpForRightScoop3() {
-  leftDrive(-100);
+  leftDrive(-180);
   rightDrive(0);
 
   printVal = rightWallSensorValue;
-  if (rightWallSensorValue > 400) {
+  if (rightWallSensorValue > 315) {
     return true;
   }
   return false;
 }
 
 bool passCornerDeliverRight3() {
-  leftDrive(100);
-  rightDrive(100);
+  leftDrive(180);
+  rightDrive(180);
 
-  if (rightBarrelSensorValue < 700) {
+  if (rightBarrelSensorValue < 850) {
     rightScoop.write(R_SCOOP_DOWN);
-    rightDispenser.write(R_DISPENSER_KICK);
   }
 
-  if (delayState(350)) {
+  if (delayState(300)) {
     rightDispenser.write(R_DISPENSER_KICK);
     return true;
   }
@@ -399,22 +402,22 @@ bool passCornerDeliverRight3() {
 }
 
 bool passCornerScoopRight3() {
-  leftDrive(100);
-  rightDrive(100);
+  leftDrive(180);
+  rightDrive(180);
   
-  if (rightBarrelSensorValue < 700) {
+  if (rightBarrelSensorValue < 850) {
     rightScoop.write(R_SCOOP_DOWN);
     rightDispenser.write(R_DISPENSER_KICK);
   }
-  return delayState(150);
+  return delayState(200);
 }
 
 bool skimSouthWall() {
-  leftDrive(100);
-  rightDrive(100);
+  leftDrive(180);
+  rightDrive(180);
 
   printVal = rightWallSensorValue;
-  if (rightWallSensorValue < 700) {
+  if (rightWallSensorValue < 400) {
     return true;
   }
   return false;
@@ -422,7 +425,7 @@ bool skimSouthWall() {
 
 bool findSouthLine() {
   leftDrive(0);
-  rightDrive(100);
+  rightDrive(180);
 
   printVal = lastSeen;
   if (lastSeen != -1) {
@@ -434,15 +437,15 @@ bool findSouthLine() {
 }
 
 bool alignWithSouthLine() {
-  strongLineFollow(3, 20);
+  strongLineFollow(3, 30, 180);
   delayState(300);
 }
 
 bool scoopLeft2DeliverLeft2() {
-  strongLineFollow(6, 20);
+  strongLineFollow(6, 40, 180);
   
   printVal = backSensorValue;
-  if (backSensorValue < 700) {
+  if (backSensorValue < 80) {
     leftScoop.write(L_SCOOP_DOWN);
     leftDispenser.write(L_DISPENSER_KICK);
     rightScoop.write(R_SCOOP_UP);
@@ -456,86 +459,137 @@ bool scoopLeft2DeliverLeft2() {
 
 bool allowLeftBarrelEjection2() {
   // Make line following go slower.
-  weakLineFollow(6, 10, 50);
-  return delayState(600);
+  weakLineFollow(6, 30, 80);
+  return delayState(350);
 }
 
 bool lineFollowToIsland() {
-  rightOffsetLineFollow();
+  weakLineFollow(3, 30, 170);
+  if (rightBarrelSensorValue < 800) {
+    rightScoop.write(R_SCOOP_DOWN);
+  }
+  printVal = rightWallSensorValue;
   return rightWallSensorValue < 500;
 }
 
-bool scoopRight4() {
-  driveBesideWall(500, 100);
+bool scoopRight4DeliverRight4() {
+  weakLineFollow(2, 20, 170);
 
-  printVal = rightBarrelSensorValue;
-  if (rightBarrelSensorValue < 500) {
+  if (rightBarrelSensorValue < 800) {
     rightScoop.write(R_SCOOP_DOWN);
   }
 
   printVal = rightWallSensorValue;
-  if (rightWallSensorValue > 800) {
-    leftScoop.write(L_SCOOP_UP);
-    return true;
-  }
-
-  return false;
+  return rightWallSensorValue > 800;
 }
 
-bool allowRightBarrelEjection4() {
-  rightOffsetLineFollow();
-
-  printVal = rightWallSensorValue;
-  if (rightWallSensorValue > 800) {
-    return true;
-  }
-  return false;
-  
-}
-
-bool wigglePart1() {
-  leftDrive(0);
-  rightDrive(60);
-  printVal = lastSeen;
-  return lastSeen == -1;
-}
-
-bool wigglePart2DeliverRight4() {
-  leftDrive(60);
-  rightDrive(0);
-  printVal = lastSeen;
-  if (lastSeen == 2) {
-    rightDispenser.write(R_DISPENSER_KICK);
-  }
-
-  return lastSeen == 0;
-}
-
-bool wigglePart3() {
-  leftDrive(0);
-  rightDrive(60);
+bool allowRight4Ejection() {
+  weakLineFollow(2, 10, 90);
   rightDispenser.write(R_DISPENSER_KICK);
-  printVal = lastSeen;
+
+  return delayState(300);
+}
+
+bool blindLeftTurn() {
+  leftDrive(0);
+  rightDrive(180);
+
+  return delayState(700);
+}
+
+bool getLost() {
+  leftDrive(180);
+  rightDrive(180);
+  return delayState(700);
+}
+
+bool returnStraight() {
+  leftDrive(200);
+  rightDrive(0);
+
+  return delayState(880);
+}
+
+bool passRocks() {
+  leftDrive(250);
+  rightDrive(210);
+  return delayState(2600);
+}
+
+bool blindRightTurn() {
+  leftDrive(180);
+  rightDrive(0);
+
+  return delayState(800) || (lastSeen <= 4 && lastSeen > -1);
+}
+
+bool findLastLine() {
+  leftDrive(180);
+  rightDrive(180);
   return lastSeen == 4;
 }
 
-bool hugCorner() {
-  leftDrive(60);
-  rightDrive(0);
-  printVal = rightWallSensorValue;
-  return rightWallSensorValue < 570;
+bool secureLine() {
+  
+  strongLineFollow(4, 45, 150);
+
+  return delayState(1000);
 }
 
-bool findSouthWall() {
-  leftDrive(80);
-  rightDrive(80);
-  printVal = rightWallSensorValue;
-  return rightWallSensorValue < 220;
+bool findTapeCorner() {
+  strongLineFollow(6, 25, 180);
+
+  return amountSeen > 3;
 }
 
-bool smearWall() {
-  driveBesideWall(250, 50);
+bool rotateDelay() {
+  leftDrive(-120);
+  rightDrive(120);
+  return delayState(600);
+}
+
+bool rotateOffLine() {
+  leftDrive(-120);
+  rightDrive(120);
+  return lastSeen == 5;
+}
+
+bool wallFollowSpain() {
+  weakLineFollow(5, 15, 180);
   printVal = rightWallSensorValue;
+  return rightWallSensorValue > 900;
+}
+
+
+bool faceSpain() {
+  leftDrive(0);
+  rightDrive(-150);
+  return lastSeen == 7;
+}
+
+bool chargeSpain() {
+  leftDrive(240);
+  rightDrive(180);
+
+  return delayState(200);
+}
+
+bool sinkSpain() {
+  leftDrive(200);
+  rightDrive(200);
+
+  dumper.write(DUMP_UP);
+
+  return delayState(800);
+}
+
+bool dance() {
+  leftDrive(50);
+  rightDrive(50);
+  dumper.write(DUMP_DOWN);
+  delay(300);
+  dumper.write(DUMP_UP);
+  delay(600);
   return false;
 }
 
@@ -619,71 +673,53 @@ void loop() {
     
   // State succession
   switch (state) {
-    // Beginning of a run; exits when a button is pressed.
     case 0: if (start()) state++; break;
-
-    // Drives straight; exits when wall detected.
     case 1: if (findNorthWall()) state++; break;
-
-    // Follow at far distance for 1000 ms; we follow far because we don't want
-    // to collide into the wall.
     case 2: if (farWallFollow()) state++; break;
-
-    // Follow wall until three rock detection changes.
     case 3: if (wallFollowPastRocks()) state++; break;
-
-    // Lock left wheel; exits when rightmost sensor detects line.
     case 4: if (turnToFindLine()) state++; break;
-
-    // Drive straight for 300 ms to avoid catching corner when turning back to
-    // the line.
     case 5: if (clearCorner()) state++; break;
-
-    // Lock right wheel; exits when sensor 3 detects line.
     case 6: if (lineUpForLineFollow()) state++; break;
-
-    // Right offset line follow; exits when right barrel detected.
     case 7: if (scoopRight1DeliverRight1()) state++; break;
-
-    // Left offset line follow; exits when left barrel detected.
-    case 8:  if (scoopLeft1ResetRightServos()) state++; break;
-
-    // Exits when barrel detected.
-    case 9: if (wallFollowScoopRight2()) state++; break;
-
-    // Exits when right wall sensor gets a short distance away; delivers barrel
-    // on exit.
-    case 10: if (turnBackwardDeliverRight2()) state++; break;
-
-    // Exits when the right wall sensor gets a far distance away; does nothing
-    // significant.
-    case 11: if (turnAwayFromWall()) state++; break;
-
-    // Exits and when back sensor detects island. On exit, sends left dispenser on.
-    case 12: if (wallFollowDeliverLeft1()) state++; break;
-
-    case 13: if (wallFollowToCorner()) state++; break;
-    case 14: if (lineUpForRightScoop3()) state++; break;
-    case 15: if (passCornerDeliverRight3()) state++; break;
-    case 16: if (passCornerScoopRight3()) state++; break;
-    case 17: if (skimSouthWall()) state++; break;
-    case 18: if (findSouthLine()) state++; break;
-    case 19: if (alignWithSouthLine()) state++; break;
-    case 20: if (scoopLeft2DeliverLeft2()) state++; break;
-    case 21: if (allowLeftBarrelEjection2()) state++; break;
-    case 22: if (lineFollowToIsland()) state++; break;
-    case 23: if (scoopRight4()) state++; break;
-    case 24: if (wigglePart1()) state++; break;
-    case 25: if (wigglePart2DeliverRight4()) state++; break;
-    case 26: if (wigglePart3()) state++; break;
-    case 27: if (hugCorner()) state++; break;
-    case 28: if (findSouthWall()) state++; break;
-    case 29: if (smearWall()) state++; break;
-    case 30: if (stop()) state++; break;
+    case 8: if (scoopLeft1ResetRightServos()) state++; break;
+    case 9: if (lineFollowToRight2()) state++; break;
+    case 10: if (findMartinique()) state++; break;
+    case 11: if (wallFollowScoopRight2()) state++; break;
+    case 12: if (turnBackwardDeliverRight2()) state++; break;
+    case 13: if (turnAwayFromWall()) state++; break;
+    case 14: if (wallFollowDeliverLeft1()) state++; break;
+    case 15: if (wallFollowToCorner()) state++; break;
+    case 16: if (lineUpForRightScoop3()) state++; break;
+    case 17: if (passCornerDeliverRight3()) state++; break;
+    case 18: if (passCornerScoopRight3()) state++; break;
+    case 19: if (skimSouthWall()) state++; break;
+    case 20: if (findSouthLine()) state++; break;
+    case 21: if (alignWithSouthLine()) state++; break;
+    case 22: if (scoopLeft2DeliverLeft2()) state++; break;
+    case 23: if (allowLeftBarrelEjection2()) state++; break;
+    case 24: if (lineFollowToIsland()) state++; break;
+    case 25: if (scoopRight4DeliverRight4()) state++; break;
+    case 26: if (allowRight4Ejection()) state++; break;
+    case 27: if (blindLeftTurn()) state++; break;
+    case 28: if (getLost()) state++; break;
+    case 29: if (returnStraight()) state++; break;
+    case 30: if (passRocks()) state++; break;
+    case 31: if (blindRightTurn()) state++; break;
+    case 32: if (findLastLine()) state++; break;
+    case 33: if (secureLine()) state++; break;
+    case 34: if (findTapeCorner()) state++; break;
+    case 35: if (rotateDelay()) state++; break;
+    case 36: if (rotateOffLine()) state++; break;
+    case 37: if (wallFollowSpain()) state++; break;
+    case 38: if (faceSpain()) state++; break;
+    case 39: if (chargeSpain()) state++; break;
+    case 40: if (sinkSpain()) state++; break;
+    case 41: if (dance()) state++; break;
+    case 42: if (stop()) state++; break;
     default: break;
   } 
 
-  if(iterationCount % 1000 == 0 || lastState != state){
+  if(iterationCount % 200 == 0 || lastState != state){
     Serial3.print(state);
     Serial3.print(" - ");
     Serial3.println(printVal);

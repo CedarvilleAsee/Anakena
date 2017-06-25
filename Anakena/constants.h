@@ -1,21 +1,20 @@
 #pragma once
 
 // Scoop angles
-const int L_SCOOP_UP   = 122;
-const int L_SCOOP_DOWN = 85;
+const int L_SCOOP_UP   = 139;
+const int L_SCOOP_DOWN = 94;
 const int R_SCOOP_UP   = 75;
-const int R_SCOOP_DOWN = 112;
-const int maxSpeed = 200;
+const int R_SCOOP_DOWN = 116;
 
 // Dumper angles
-const int DUMP_DOWN = 100;
-const int DUMP_UP   = 140;
+const int DUMP_DOWN = 105;
+const int DUMP_UP   = 150;
 
 // Dispenser angles
 const int R_DISPENSER_WIND_UP = 22;
 const int R_DISPENSER_KICK = 1;
-const int L_DISPENSER_WIND_UP = 1;
-const int L_DISPENSER_KICK = 20;
+const int L_DISPENSER_WIND_UP = 17;
+const int L_DISPENSER_KICK = 44;
 
 // Speeds for line following
 int RIGHT_OFFSET_FOLLOW_SPEEDS_R[] = 
